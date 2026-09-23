@@ -493,6 +493,44 @@ function bindAll(){
  $("reset").addEventListener("click",resetSettings);
  document.addEventListener("keydown",onKey);
 }
+function isMobileDevice(){
+ return window.matchMedia("(pointer: coarse)").matches || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+function setupMobileControls(){
+ if(!isMobileDevice())return;
+ document.body.classList.add("mobile-device");
+ const pad=document.createElement("div");
+ pad.id="mobileControls";
+ pad.setAttribute("aria-label","Mobile snake controls");
+ pad.innerHTML='<button data-dir="up" aria-label="Up">▲</button><div><button data-dir="left" aria-label="Left">◀</button><button data-dir="down" aria-label="Down">▼</button><button data-dir="right" aria-label="Right">▶</button></div>';
+ document.body.appendChild(pad);
+ const directions={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
+ pad.querySelectorAll("button").forEach(button=>{
+  const press=e=>{
+   e.preventDefault();
+   const d=directions[button.dataset.dir];
+   queueDirection(d[0],d[1]);
+  };
+  button.addEventListener("pointerdown",press,{passive:false});
+  button.addEventListener("touchstart",press,{passive:false});
+ });
+ let startX=0,startY=0;
+ canvas.addEventListener("touchstart",e=>{
+  if(e.touches.length!==1)return;
+  startX=e.touches[0].clientX; startY=e.touches[0].clientY;
+  e.preventDefault();
+ },{passive:false});
+ canvas.addEventListener("touchend",e=>{
+  if(!startX&&!startY)return;
+  const dx=e.changedTouches[0].clientX-startX;
+  const dy=e.changedTouches[0].clientY-startY;
+  startX=startY=0;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<24)return;
+  if(Math.abs(dx)>Math.abs(dy))queueDirection(dx>0?1:-1,0);
+  else queueDirection(0,dy>0?1:-1);
+  e.preventDefault();
+ },{passive:false});
+}
 function onKey(e){
  const k=e.key.toLowerCase();
  if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k))e.preventDefault();
