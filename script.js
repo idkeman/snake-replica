@@ -447,6 +447,31 @@ function burst(cx,cy,count,bonus){
   });
  }
 }
+function animateBackground(time){
+ const t=THEMES[settings.theme];
+ const w=canvas.width,h=canvas.height;
+ ctx.save();
+ ctx.globalAlpha=.18;
+ const spacing=Math.max(36,cellSize()*2.2);
+ const drift=(time*.018)%spacing;
+ ctx.strokeStyle=t.grid;
+ ctx.lineWidth=1;
+ for(let x=-spacing+drift;x<w+spacing;x+=spacing){
+  ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x-spacing,h);ctx.stroke();
+ }
+ for(let y=-spacing+drift;y<h+spacing;y+=spacing){
+  ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y-spacing);ctx.stroke();
+ }
+ const glowRadius=Math.max(w,h)*.38;
+ const pulse=.5+.5*Math.sin(time*.0015);
+ const gradient=ctx.createRadialGradient(w*.5,h*.5,0,w*.5,h*.5,glowRadius);
+ gradient.addColorStop(0, t.snake);
+ gradient.addColorStop(1, t.bg);
+ ctx.globalAlpha=.035+.02*pulse;
+ ctx.fillStyle=gradient;
+ ctx.fillRect(0,0,w,h);
+ ctx.restore();
+}
 function animateParticles(){
  particles.forEach(p=>{
   p.x+=p.vx;p.y+=p.vy;p.life-=.035;
