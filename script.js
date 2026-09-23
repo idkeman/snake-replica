@@ -86,7 +86,7 @@ function fillFood(){const target=Math.min(settings.foodCount,settings.mapSize*se
 
 function newGame(){
  applyMode();powerups=[];powerState={shield:0,multiplier:1};
- stopTimer();readSettings();startSnake();buildObstacles();foods=[];fillFood();score=0;elapsed=0;particles=[];flash=0;inputQueue=[];running=true;paused=false;gameStart=performance.now();stats.games++;featureSave();updateHUD();draw();startTimer();
+ stopTimer();readSettings();startSnake();buildObstacles();foods=[];spawnBushCampingFood();fillFood();score=0;elapsed=0;particles=[];flash=0;inputQueue=[];running=true;paused=false;gameStart=performance.now();stats.games++;featureSave();updateHUD();draw();startTimer();
 }
 function startTimer(){stopTimer();timer=setInterval(tick,getTickRate())}
 function stopTimer(){if(timer){clearInterval(timer);timer=null}}
@@ -102,16 +102,7 @@ function eatAt(p){const eaten=foods.filter(f=>same(f,p));if(!eaten.length)return
 
 function spawnBushCampingFood(){
  if(stats.bushCamping)return null;
- const ordinal=rand(20)+1;
- const targetIndex=ordinal-1;
- let guard=0;
- while(snake.length<=targetIndex&&guard<25){
-  const p=snake.length?snake[snake.length-1]:null;
-  if(p)snake.push({...p});
-  guard++;
- }
  const candidates=[];
- const head=snake[0];
  for(let x=0;x<settings.mapSize;x++){
   for(let y=0;y<settings.mapSize;y++){
    const p={x,y};
@@ -119,8 +110,9 @@ function spawnBushCampingFood(){
   }
  }
  if(!candidates.length)return null;
- const p=candidates[rand(candidates.length)];
- const marker={x:p.x,y:p.y,bushCamping:true,bonus:false,value:0,phase:0};
+ const pointNumber=rand(Math.min(20,candidates.length));
+ const p=candidates[pointNumber];
+ const marker={x:p.x,y:p.y,bushCamping:true,bonus:false,value:0,phase:0,pointNumber:pointNumber+1};
  foods.push(marker);
  return marker;
 }
@@ -130,6 +122,15 @@ function tick(){
  consumeDirection();featureTick();powerState.shield=Math.max(0,powerState.shield-1);powerState.multiplier=powerState.multiplier>1?Math.max(1,powerState.multiplier-.01):1;
  const head=nextHead();collectPowerup(head);
  if((hitsWall(head)||hitsSelf(head)||hitsObstacle(head))&&powerState.shield<=0){gameOver("Game Over");return}
+ const bush=foods.find(f=>f.bushCamping&&same(f,head));
+ if(bush){
+  foods=foods.filter(f=>f!==bush);
+  stats.bushCamping=true;
+  featureSave();
+  renderAchievements();
+  window.location.href="http://scratch.mit.edu/projects/1013099217/";
+  return;
+ }
  const gained=eatAt(head);
  snake.unshift(head);
  if(gained>0){
