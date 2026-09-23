@@ -86,7 +86,7 @@ function fillFood(){const target=Math.min(settings.foodCount,settings.mapSize*se
 
 function newGame(){
  applyMode();powerups=[];powerState={shield:0,multiplier:1};
- stopTimer();readSettings();startSnake();buildObstacles();foods=[];spawnBushCampingFood();fillFood();score=0;elapsed=0;particles=[];flash=0;inputQueue=[];running=true;paused=false;gameStart=performance.now();stats.games++;featureSave();updateHUD();draw();startTimer();
+ stopTimer();readSettings();startSnake();buildObstacles();foods=[];fillFood();spawnBushCampingFood();score=0;elapsed=0;particles=[];flash=0;inputQueue=[];running=true;paused=false;gameStart=performance.now();stats.games++;featureSave();updateHUD();draw();startTimer();
 }
 function startTimer(){stopTimer();timer=setInterval(tick,getTickRate())}
 function stopTimer(){if(timer){clearInterval(timer);timer=null}}
