@@ -202,6 +202,7 @@ function closeDevMenu(){const m=$("devMenu");if(!m)return;m.classList.remove("sh
 function devSpawnX(){if(!running)newGame();if(spawnXFormation()){toast("DEV: X formation spawned");draw()}else toast("DEV: no room for X formation")}
 function devSpawnBush(){if(!running)newGame();if(spawnBushCampingFood(true)){toast("DEV: Bush camping spawned");draw()}else toast("DEV: no room for bush")}
 function devSpawnDifferentGame(){if(!running)newGame();if(spawnFood(false,true)){toast("DEV: different-game food spawned");draw()}else toast("DEV: no room for different-game food")}
+function devSpawnKilldozer(){if(!running)newGame();const p=randomOpenCell();if(p){foods.push({x:p.x,y:p.y,bonus:false,value:settings.foodValue,phase:Math.random()*Math.PI*2,killdozer:true});toast("DEV: Killdozer spawned");draw()}else toast("DEV: no room for Killdozer")}
 function bindAll(){
  $("closeFeatureMenu").onclick=closeFeatureMenu;document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>document.querySelectorAll("[data-panel]").forEach(p=>p.hidden=p.dataset.panel!==b.dataset.tab));$("savePreset").onclick=savePreset;$("fullscreen").onclick=()=>document.documentElement.requestFullscreen?.();$("clearStats").onclick=()=>{stats={games:0,deaths:0,food:0,bestLength:0,bestTime:0,powerups:0};featureSave();renderStats();renderAchievements()};$("resetAchievements").onclick=()=>{stats.bushCamping=false;stats.limp=false;stats.xMarksTheSpot=false;stats.playDifferentGame=false;stats.killdozer=false;featureSave();renderAchievements();toast("Achievements reset")};
  $("devSpawnX").onclick=devSpawnX;
@@ -212,6 +213,7 @@ function bindAll(){
  $("devUnlockX").onclick=()=>unlockAchievement("xMarksTheSpot","X marks the spot");
  $("devUnlockBush").onclick=()=>unlockAchievement("bushCamping","Bush camping");
  $("devPlayDifferent").onclick=devSpawnDifferentGame;
+ $("devSpawnKilldozer").onclick=devSpawnKilldozer;
  $("devUnlockDifferent").onclick=()=>unlockAchievement("playDifferentGame","Play a different game.");
  $("devPause").onclick=togglePause;
  $("devClose").onclick=closeDevMenu;document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>{const p=b.dataset.preset;settings={...DEFAULTS};if(p==="chaos"){settings.foodCount=8;settings.obstacles=10;settings.bonusChance=40;settings.speed=60;settings.wrap=true}else if(p==="speedrun"){settings.speed=45;settings.speedGrowth=5}else if(p==="maze"){settings.obstacles=20;settings.mapSize=30}else if(p==="zen"){settings.speed=160;settings.wrap=true;settings.selfCollision=false;settings.foodCount=3}applySettingsToUI();saveSettings();newGame();closeFeatureMenu()});
