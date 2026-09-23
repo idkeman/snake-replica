@@ -37,8 +37,8 @@ function renderStats(){$("statsGrid").innerHTML=Object.entries({Games:stats.game
 function showAchievement(name){const el=$("achievementNotification"),label=$("achievementName");if(!el||!label)return;label.textContent=name;el.classList.remove("show");void el.offsetWidth;el.classList.add("show");clearTimeout(achievementTimer);achievementTimer=setTimeout(()=>el.classList.remove("show"),3000)}
 function unlockAchievement(key,name){if(stats[key])return false;stats[key]=true;featureSave();renderAchievements();showAchievement(name);return true}
 function renderAchievements(){const a=[["Bush camping",!!stats.bushCamping],["Limp",!!stats.limp],["X marks the spot",!!stats.xMarksTheSpot],["Play a different game",!!stats.playDifferentGame],["First Bite",stats.food>0],["Century",best>=100],["Long Snake",stats.bestLength>=20],["Dedicated",stats.games>=10],["Survivor",stats.bestTime>=120],["Powered Up",stats.powerups>0]];$("achievements").innerHTML=a.map(x=>"<span class='"+(x[1]?"unlocked":"")+"'>"+(x[1]?"★ ":"☆ ")+x[0]+"</span>").join("")}
-function renderPresets(){const p=JSON.parse(localStorage.getItem("snake-presets")||"{}");$("customPresets").innerHTML=Object.keys(p).map(n=>"<button data-custom='"+encodeURIComponent(n)+"'>"+n+"</button>").join("");$("customPresets").querySelectorAll("[data-custom]").forEach(b=>b.onclick=()=>{settings={...DEFAULTS,...p[decodeURIComponent(b.dataset.custom)]};applySettingsToUI();saveSettings();newGame();closeFeatureMenu()})}
-function savePreset(){const n=$("presetName").value.trim();if(!n)return;const p=JSON.parse(localStorage.getItem("snake-presets")||"{}");p[n]={...settings};localStorage.setItem("snake-presets",JSON.stringify(p));renderPresets();toast("Preset saved")}
+function renderPresets(){let p={};try{p=JSON.parse(localStorage.getItem("snake-presets")||"{}")}catch(e){}if(!p||typeof p!=="object"||Array.isArray(p))p={};$("customPresets").innerHTML=Object.keys(p).map(n=>"<button data-custom='"+encodeURIComponent(n)+"'>"+n+"</button>").join("");$("customPresets").querySelectorAll("[data-custom]").forEach(b=>b.onclick=()=>{settings={...DEFAULTS,...p[decodeURIComponent(b.dataset.custom)]};applySettingsToUI();saveSettings();newGame();closeFeatureMenu()})}
+function savePreset(){const n=$("presetName").value.trim();if(!n)return;let p={};try{p=JSON.parse(localStorage.getItem("snake-presets")||"{}")}catch(e){}if(!p||typeof p!=="object"||Array.isArray(p))p={};p[n]={...settings};localStorage.setItem("snake-presets",JSON.stringify(p));renderPresets();toast("Preset saved")}
 function openFeatureMenu(){$("featureMenu").classList.add("show");renderStats();renderAchievements();renderPresets()}
 function closeFeatureMenu(){$("featureMenu").classList.remove("show")}
 function applyMode(){if(feature.mode==="endless"){settings.wrap=true;settings.selfCollision=false}else if(feature.mode==="challenge"){settings.obstacles=Math.max(12,settings.obstacles);settings.foodCount=Math.min(3,settings.foodCount)}else if(feature.mode==="survival"){settings.speedGrowth=Math.max(3,settings.speedGrowth)}else if(feature.mode==="timed"){settings.speed=Math.min(90,settings.speed)}}
@@ -88,8 +88,8 @@ function spawnXFormation(){\n const offsets=[[-1,-1],[0,0],[1,1],[-1,1],[1,-1]];
 function fillFood(){const target=Math.min(settings.foodCount,settings.mapSize*settings.mapSize-1);while(foods.length<target)spawnFood()}
 
 function newGame(){
- applyMode();powerups=[];powerState={shield:0,multiplier:1};
- stopTimer();readSettings();startSnake();buildObstacles();foods=[];fillFood();spawnBushCampingFood();score=0;elapsed=0;particles=[];flash=0;inputQueue=[];running=true;paused=false;gameStart=performance.now();stats.games++;featureSave();updateHUD();draw();startTimer();
+ readSettings();applyMode();powerups=[];powerState={shield:0,multiplier:1};
+ stopTimer();startSnake();buildObstacles();foods=[];fillFood();spawnBushCampingFood();score=0;elapsed=0;particles=[];flash=0;inputQueue=[];running=true;paused=false;gameStart=performance.now();stats.games++;featureSave();updateHUD();draw();startTimer();
 }
 function startTimer(){stopTimer();timer=setInterval(tick,getTickRate())}
 function stopTimer(){if(timer){clearInterval(timer);timer=null}}
@@ -113,16 +113,16 @@ function triggerDifferentGame(){\n stopTimer();\n paused=true;\n unlockAchieveme
   foods.push({x:p.x,y:p.y,bonus:false,value:0,phase:0,differentGame:true});
   toast("Chess food spawned");
  }else if(type==="x"){
-  const original=Math.random;
   const success=spawnXFormation();
   if(success)toast("X formation spawned");
   else toast("No room for an X formation");
-  void original;
  }
 }
 function toggleDevMenu(){
  const menu=$("devMenu");
- if(menu)menu.classList.toggle("show");
+ if(!menu)return;
+ const open=menu.classList.toggle("show");
+ menu.setAttribute("aria-hidden",String(!open));
 }
 function spawnBushCampingFood(){
  if(stats.bushCamping)return null;
@@ -183,7 +183,7 @@ function toast(text){const el=$("toast");el.textContent=text;el.classList.add("s
 function bindRange(id,rerun){$(id).addEventListener("input",()=>{readSettings();saveSettings();if(rerun)restartTimerIfNeeded()})}
 function bindSetting(id,rerun){$(id).addEventListener("change",()=>{readSettings();saveSettings();if(rerun)restartTimerIfNeeded()})}
 function bindAll(){
- $("closeFeatureMenu").onclick=closeFeatureMenu;document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>document.querySelectorAll("[data-panel]").forEach(p=>p.hidden=p.dataset.panel!==b.dataset.tab));$("savePreset").onclick=savePreset;$("fullscreen").onclick=()=>document.documentElement.requestFullscreen?.();$("clearStats").onclick=()=>{stats={games:0,deaths:0,food:0,bestLength:0,bestTime:0,powerups:0};featureSave();renderStats();renderAchievements()};$("resetAchievements").onclick=()=>{stats.bushCamping=false;stats.limp=false;stats.xMarksTheSpot=false;stats.playDifferentGame=false;featureSave();renderAchievements();toast("Achievements reset")};
+ $("closeFeatureMenu").onclick=closeFeatureMenu;document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>document.querySelectorAll("[data-panel]").forEach(p=>p.hidden=p.dataset.panel!==b.dataset.tab));$("savePreset").onclick=savePreset;$("fullscreen").onclick=()=>document.documentElement.requestFullscreen?.();$("clearStats").onclick=()=>{stats={...stats,games:0,deaths:0,food:0,bestLength:0,bestTime:0,powerups:0};featureSave();renderStats();renderAchievements()};$("resetAchievements").onclick=()=>{stats.bushCamping=false;stats.limp=false;stats.xMarksTheSpot=false;stats.playDifferentGame=false;featureSave();renderAchievements();toast("Achievements reset")};
  $("closeDevMenu").onclick=toggleDevMenu;$("devBush").onclick=()=>devSpawnFood("bush");
  $("devX").onclick=()=>devSpawnFood("x");
  $("devChess").onclick=()=>devSpawnFood("chess");
