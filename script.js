@@ -1,20 +1,3 @@
-
-let feature={mode:"classic",powerups:false,powerupRate:20,sound:true,music:false,vibration:true,volume:45,reducedMotion:false,largeUI:false,highContrast:false};\nlet musicTimer=null;\nfunction toggleMusic(on){feature.music=on;if(!on){clearInterval(musicTimer);musicTimer=null;return}if(musicTimer)return;musicTimer=setInterval(()=>{if(feature.sound)featureTone(110+Math.random()*80,.35)},900)}\nfunction featureTone(freq,dur){try{const a=featureTone.ctx||(featureTone.ctx=new (window.AudioContext||window.webkitAudioContext)());const o=a.createOscillator(),g=a.createGain();o.frequency.value=freq;g.gain.value=feature.volume/1000;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+dur)}catch(e){}}
-let stats=JSON.parse(localStorage.getItem("snake-stats")||'{"games":0,"deaths":0,"food":0,"bestLength":0,"bestTime":0,"powerups":0}');
-let powerups=[];let powerState={shield:0,multiplier:1};
-function featureSave(){localStorage.setItem("snake-feature",JSON.stringify(feature));localStorage.setItem("snake-stats",JSON.stringify(stats))}
-function featureLoad(){try{feature={...feature,...JSON.parse(localStorage.getItem("snake-feature")||"{}")}}catch(e){};stats={...stats,...JSON.parse(localStorage.getItem("snake-stats")||"{}")};featureUI()}
-function featureUI(){["powerupsEnabled","soundEnabled","vibrationEnabled","reducedMotion","largeUI","highContrast"].forEach(id=>{const e=$(id);if(e)e.checked=feature[id.replace("Enabled","")]??false});$("gameMode").value=feature.mode;$("powerupRate").value=feature.powerupRate;$("powerupRateVal").textContent=feature.powerupRate+"%";$("volume").value=feature.volume;$("volumeVal").textContent=feature.volume+"%";document.body.classList.toggle("large-ui",feature.largeUI);document.body.classList.toggle("high-contrast",feature.highContrast);document.body.classList.toggle("reduced-motion",feature.reducedMotion);renderStats();renderAchievements();renderPresets()}
-function renderStats(){$("statsGrid").innerHTML=Object.entries({Games:stats.games,Deaths:stats.deaths,"Food eaten":stats.food,"Best length":stats.bestLength,"Best time":Math.floor(stats.bestTime)+"s","Power-ups":stats.powerups}).map(([k,v])=>"<div><b>"+v+"</b><span>"+k+"</span></div>").join("")}
-function renderAchievements(){const a=[["First Bite",stats.food>0],["Century",best>=100],["Long Snake",stats.bestLength>=20],["Dedicated",stats.games>=10],["Survivor",stats.bestTime>=120],["Powered Up",stats.powerups>0]];$("achievements").innerHTML=a.map(x=>"<span class='"+(x[1]?"unlocked":"")+"'>"+(x[1]?"★ ":"☆ ")+x[0]+"</span>").join("")}
-function renderPresets(){const p=JSON.parse(localStorage.getItem("snake-presets")||"{}");$("customPresets").innerHTML=Object.keys(p).map(n=>"<button data-custom='"+encodeURIComponent(n)+"'>"+n+"</button>").join("");$("customPresets").querySelectorAll("[data-custom]").forEach(b=>b.onclick=()=>{settings={...DEFAULTS,...p[decodeURIComponent(b.dataset.custom)]};applySettingsToUI();saveSettings();newGame();closeFeatureMenu()})}
-function savePreset(){const n=$("presetName").value.trim();if(!n)return;const p=JSON.parse(localStorage.getItem("snake-presets")||"{}");p[n]={...settings};localStorage.setItem("snake-presets",JSON.stringify(p));renderPresets();toast("Preset saved")}
-function openFeatureMenu(){$("featureMenu").classList.add("show");renderStats();renderAchievements();renderPresets()}
-function closeFeatureMenu(){$("featureMenu").classList.remove("show")}
-function applyMode(){if(feature.mode==="endless"){settings.wrap=true;settings.selfCollision=false}else if(feature.mode==="challenge"){settings.obstacles=Math.max(12,settings.obstacles);settings.foodCount=Math.min(3,settings.foodCount)}else if(feature.mode==="survival"){settings.speedGrowth=Math.max(3,settings.speedGrowth)}else if(feature.mode==="timed"){settings.speed=Math.min(90,settings.speed)}}
-function featureTick(){if(feature.powerups&&Math.random()*100<feature.powerupRate/4){const p=randomOpenCell();if(p)powerups.push({...p,type:["shield","multiplier","shrink","speed"][rand(4)],life:90})}powerups.forEach(p=>p.life--);powerups=powerups.filter(p=>p.life>0)}
-function drawPowerups(){const c=cellSize(),t=THEMES[settings.theme];powerups.forEach(p=>{ctx.fillStyle=t.bonus;ctx.beginPath();ctx.arc((p.x+.5)*c,(p.y+.5)*c,c*.3,0,Math.PI*2);ctx.fill();ctx.fillStyle=t.bg;ctx.font=Math.max(8,c*.28)+"px monospace";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(p.type[0].toUpperCase(),(p.x+.5)*c,(p.y+.5)*c)})}
-function collectPowerup(p){const hit=powerups.find(x=>same(x,p));if(!hit)return;powerups=powerups.filter(x=>x!==hit);if(hit.type==="shield")powerState.shield=120;if(hit.type==="multiplier")powerState.multiplier=2;if(hit.type==="shrink")snake.length=Math.max(2,Math.ceil(snake.length/2));if(hit.type==="speed")powerState.speed=120;stats.powerups++;featureSave();toast(hit.type.toUpperCase()+" POWER-UP");if(feature.vibration)navigator.vibrate?.(30)}
 "use strict";
 (() => {
 const $=id=>document.getElementById(id);
@@ -38,6 +21,24 @@ let score=0,best=Number(localStorage.getItem("snake-best")||0);
 let running=false,paused=false,gameStart=0,elapsed=0,timer=null,lastFrame=0;
 let inputQueue=[];
 let particles=[],flash=0,toastTimer=null;
+
+let feature={mode:"classic",powerups:false,powerupRate:20,sound:true,music:false,vibration:true,volume:45,reducedMotion:false,largeUI:false,highContrast:false};\nlet musicTimer=null;\nfunction toggleMusic(on){feature.music=on;if(!on){clearInterval(musicTimer);musicTimer=null;return}if(musicTimer)return;musicTimer=setInterval(()=>{if(feature.sound)featureTone(110+Math.random()*80,.35)},900)}\nfunction featureTone(freq,dur){try{const a=featureTone.ctx||(featureTone.ctx=new (window.AudioContext||window.webkitAudioContext)());const o=a.createOscillator(),g=a.createGain();o.frequency.value=freq;g.gain.value=feature.volume/1000;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+dur)}catch(e){}}
+let stats=JSON.parse(localStorage.getItem("snake-stats")||'{"games":0,"deaths":0,"food":0,"bestLength":0,"bestTime":0,"powerups":0}');
+let powerups=[];let powerState={shield:0,multiplier:1};
+function featureSave(){localStorage.setItem("snake-feature",JSON.stringify(feature));localStorage.setItem("snake-stats",JSON.stringify(stats))}
+function featureLoad(){try{feature={...feature,...JSON.parse(localStorage.getItem("snake-feature")||"{}")}}catch(e){};stats={...stats,...JSON.parse(localStorage.getItem("snake-stats")||"{}")};featureUI()}
+function featureUI(){["powerupsEnabled","soundEnabled","musicEnabled","vibrationEnabled","reducedMotion","largeUI","highContrast"].forEach(id=>{const e=$(id);if(e)e.checked=feature[id.replace("Enabled","")]??false});$("gameMode").value=feature.mode;$("powerupRate").value=feature.powerupRate;$("powerupRateVal").textContent=feature.powerupRate+"%";$("volume").value=feature.volume;$("volumeVal").textContent=feature.volume+"%";document.body.classList.toggle("large-ui",feature.largeUI);document.body.classList.toggle("high-contrast",feature.highContrast);document.body.classList.toggle("reduced-motion",feature.reducedMotion);renderStats();renderAchievements();renderPresets()}
+function renderStats(){$("statsGrid").innerHTML=Object.entries({Games:stats.games,Deaths:stats.deaths,"Food eaten":stats.food,"Best length":stats.bestLength,"Best time":Math.floor(stats.bestTime)+"s","Power-ups":stats.powerups}).map(([k,v])=>"<div><b>"+v+"</b><span>"+k+"</span></div>").join("")}
+function renderAchievements(){const a=[["First Bite",stats.food>0],["Century",best>=100],["Long Snake",stats.bestLength>=20],["Dedicated",stats.games>=10],["Survivor",stats.bestTime>=120],["Powered Up",stats.powerups>0]];$("achievements").innerHTML=a.map(x=>"<span class='"+(x[1]?"unlocked":"")+"'>"+(x[1]?"★ ":"☆ ")+x[0]+"</span>").join("")}
+function renderPresets(){const p=JSON.parse(localStorage.getItem("snake-presets")||"{}");$("customPresets").innerHTML=Object.keys(p).map(n=>"<button data-custom='"+encodeURIComponent(n)+"'>"+n+"</button>").join("");$("customPresets").querySelectorAll("[data-custom]").forEach(b=>b.onclick=()=>{settings={...DEFAULTS,...p[decodeURIComponent(b.dataset.custom)]};applySettingsToUI();saveSettings();newGame();closeFeatureMenu()})}
+function savePreset(){const n=$("presetName").value.trim();if(!n)return;const p=JSON.parse(localStorage.getItem("snake-presets")||"{}");p[n]={...settings};localStorage.setItem("snake-presets",JSON.stringify(p));renderPresets();toast("Preset saved")}
+function openFeatureMenu(){$("featureMenu").classList.add("show");renderStats();renderAchievements();renderPresets()}
+function closeFeatureMenu(){$("featureMenu").classList.remove("show")}
+function applyMode(){if(feature.mode==="endless"){settings.wrap=true;settings.selfCollision=false}else if(feature.mode==="challenge"){settings.obstacles=Math.max(12,settings.obstacles);settings.foodCount=Math.min(3,settings.foodCount)}else if(feature.mode==="survival"){settings.speedGrowth=Math.max(3,settings.speedGrowth)}else if(feature.mode==="timed"){settings.speed=Math.min(90,settings.speed)}}
+function featureTick(){if(feature.powerups&&Math.random()*100<feature.powerupRate/4){const p=randomOpenCell();if(p)powerups.push({...p,type:["shield","multiplier","shrink","speed"][rand(4)],life:90})}powerups.forEach(p=>p.life--);powerups=powerups.filter(p=>p.life>0)}
+function drawPowerups(){const c=cellSize(),t=THEMES[settings.theme];powerups.forEach(p=>{ctx.fillStyle=t.bonus;ctx.beginPath();ctx.arc((p.x+.5)*c,(p.y+.5)*c,c*.3,0,Math.PI*2);ctx.fill();ctx.fillStyle=t.bg;ctx.font=Math.max(8,c*.28)+"px monospace";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(p.type[0].toUpperCase(),(p.x+.5)*c,(p.y+.5)*c)})}
+function collectPowerup(p){const hit=powerups.find(x=>same(x,p));if(!hit)return;powerups=powerups.filter(x=>x!==hit);if(hit.type==="shield")powerState.shield=120;if(hit.type==="multiplier")powerState.multiplier=2;if(hit.type==="shrink")snake.length=Math.max(2,Math.ceil(snake.length/2));if(hit.type==="speed")powerState.speed=120;stats.powerups++;featureSave();toast(hit.type.toUpperCase()+" POWER-UP");if(feature.vibration)navigator.vibrate?.(30)}
+
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
 function rand(n){return Math.floor(Math.random()*n)}
 function same(a,b){return a.x===b.x&&a.y===b.y}
@@ -439,9 +440,11 @@ function drawParticles(){
 }
 function draw(){
  clearBoard();
+ if(!feature.reducedMotion) animateBackground(performance.now());
  drawGrid();
  drawObstacles();
  drawFood();
+ drawPowerups();
  drawSnake();
  drawParticles();
  if(flash>0){
