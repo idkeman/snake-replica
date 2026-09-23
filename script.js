@@ -17,7 +17,7 @@ const THEMES={
 };
 let settings={...DEFAULTS};
 let snake=[],foods=[],obstacles=[],direction={x:1,y:0},queued={x:1,y:0};
-let score=0,best=Number(localStorage.getItem("snake-best")||0);
+let score=0,best=Number(localStorage.getItem("snake-best")||0);if(!Number.isFinite(best)||best<0)best=0;
 let running=false,paused=false,gameStart=0,elapsed=0,timer=null,lastFrame=0;
 let inputQueue=[];
 let particles=[],flash=0,toastTimer=null,achievementTimer=null;
@@ -37,7 +37,7 @@ function renderStats(){$("statsGrid").innerHTML=Object.entries({Games:stats.game
 function showAchievement(name){const el=$("achievementNotification"),label=$("achievementName");if(!el||!label)return;label.textContent=name;el.classList.remove("show");void el.offsetWidth;el.classList.add("show");clearTimeout(achievementTimer);achievementTimer=setTimeout(()=>el.classList.remove("show"),3000)}
 function unlockAchievement(key,name){if(stats[key])return false;stats[key]=true;featureSave();renderAchievements();showAchievement(name);return true}
 function renderAchievements(){const a=[["Bush camping",!!stats.bushCamping],["Limp",!!stats.limp],["X marks the spot",!!stats.xMarksTheSpot],["Play a different game",!!stats.playDifferentGame],["First Bite",stats.food>0],["Century",best>=100],["Long Snake",stats.bestLength>=20],["Dedicated",stats.games>=10],["Survivor",stats.bestTime>=120],["Powered Up",stats.powerups>0]];$("achievements").innerHTML=a.map(x=>"<span class='"+(x[1]?"unlocked":"")+"'>"+(x[1]?"★ ":"☆ ")+x[0]+"</span>").join("")}
-function renderPresets(){let p={};try{p=JSON.parse(localStorage.getItem("snake-presets")||"{}")}catch(e){}if(!p||typeof p!=="object"||Array.isArray(p))p={};$("customPresets").innerHTML=Object.keys(p).map(n=>"<button data-custom='"+encodeURIComponent(n)+"'>"+n+"</button>").join("");$("customPresets").querySelectorAll("[data-custom]").forEach(b=>b.onclick=()=>{settings={...DEFAULTS,...p[decodeURIComponent(b.dataset.custom)]};applySettingsToUI();saveSettings();newGame();closeFeatureMenu()})}
+function renderPresets(){let p={};try{p=JSON.parse(localStorage.getItem("snake-presets")||"{}")}catch(e){}if(!p||typeof p!=="object"||Array.isArray(p))p={};$("customPresets").replaceChildren(...Object.keys(p).map(n=>{const b=document.createElement("button");b.type="button";b.textContent=n;b.dataset.custom=encodeURIComponent(n);return b}));$("customPresets").querySelectorAll("[data-custom]").forEach(b=>b.onclick=()=>{const saved=p[decodeURIComponent(b.dataset.custom)];if(!saved||typeof saved!=="object")return;settings={...DEFAULTS,...saved};normalizeSettings();applySettingsToUI();saveSettings();newGame();closeFeatureMenu()})}
 function savePreset(){const n=$("presetName").value.trim();if(!n)return;let p={};try{p=JSON.parse(localStorage.getItem("snake-presets")||"{}")}catch(e){}if(!p||typeof p!=="object"||Array.isArray(p))p={};p[n]={...settings};localStorage.setItem("snake-presets",JSON.stringify(p));renderPresets();toast("Preset saved")}
 function openFeatureMenu(){$("featureMenu").classList.add("show");renderStats();renderAchievements();renderPresets()}
 function closeFeatureMenu(){$("featureMenu").classList.remove("show")}
@@ -47,6 +47,21 @@ function drawPowerups(){const c=cellSize(),t=THEMES[settings.theme];powerups.for
 function collectPowerup(p){const hit=powerups.find(x=>same(x,p));if(!hit)return;powerups=powerups.filter(x=>x!==hit);if(hit.type==="shield")powerState.shield=120;if(hit.type==="multiplier")powerState.multiplier=2;if(hit.type==="shrink")snake.length=Math.max(2,Math.ceil(snake.length/2));if(hit.type==="speed")powerState.speed=120;stats.powerups++;featureSave();toast(hit.type.toUpperCase()+" POWER-UP");if(feature.vibration)navigator.vibrate?.(30);restartTimerIfNeeded()}
 
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+function normalizeSettings(){
+ settings.mapSize=clamp(Number(settings.mapSize)||DEFAULTS.mapSize,15,40);
+ settings.foodCount=clamp(Number(settings.foodCount)||DEFAULTS.foodCount,1,12);
+ settings.foodValue=clamp(Number(settings.foodValue)||DEFAULTS.foodValue,1,25);
+ settings.startLength=clamp(Number(settings.startLength)||DEFAULTS.startLength,1,20);
+ settings.speed=clamp(Number(settings.speed)||DEFAULTS.speed,35,220);
+ settings.speedGrowth=clamp(Number(settings.speedGrowth)||0,0,10);
+ settings.obstacles=clamp(Number(settings.obstacles)||0,0,25);
+ settings.bonusChance=clamp(Number(settings.bonusChance)||0,0,100);
+ settings.goldMultiplier=clamp(Number(settings.goldMultiplier)||DEFAULTS.goldMultiplier,2,10);
+ settings.wrap=!!settings.wrap;settings.selfCollision=!!settings.selfCollision;settings.grid=!!settings.grid;settings.ghostFood=!!settings.ghostFood;settings.respawn=!!settings.respawn;settings.nearMiss=!!settings.nearMiss;settings.perfectBonus=!!settings.perfectBonus;
+ if(!THEMES[settings.theme])settings.theme=DEFAULTS.theme;
+ if(!["block","dot","outline","scan"].includes(settings.snakeStyle))settings.snakeStyle=DEFAULTS.snakeStyle;
+ if(!["block","dot","cross","diamond"].includes(settings.foodStyle))settings.foodStyle=DEFAULTS.foodStyle;
+}
 function rand(n){return Math.floor(Math.random()*n)}
 function same(a,b){return a.x===b.x&&a.y===b.y}
 function key(p){return p.x+","+p.y}
@@ -70,12 +85,13 @@ function readSettings(){
  settings.theme=$("theme").value;
  settings.snakeStyle=$("snakeStyle").value;
  settings.foodStyle=$("foodStyle").value;
+ normalizeSettings();
  updateLabels();
  resizeCanvas();
 }
 function updateLabels(){$("foodCountVal").textContent=settings.foodCount;$("foodValueVal").textContent=settings.foodValue;$("startLengthVal").textContent=settings.startLength;$("speedVal").textContent=settings.speed;$("speedGrowthVal").textContent=settings.speedGrowth+"%";$("obstaclesVal").textContent=settings.obstacles;$("bonusChanceVal").textContent=settings.bonusChance+"%";$("goldMultiplierVal").textContent=settings.goldMultiplier+"×";$("best").textContent=best}
-function saveSettings(){localStorage.setItem("snake-settings",JSON.stringify(settings))}
-function loadSettings(){try{const saved=JSON.parse(localStorage.getItem("snake-settings")||"null");if(saved)settings={...DEFAULTS,...saved}}catch(e){settings={...DEFAULTS}}applySettingsToUI()}
+function saveSettings(){normalizeSettings();localStorage.setItem("snake-settings",JSON.stringify(settings))}
+function loadSettings(){try{const saved=JSON.parse(localStorage.getItem("snake-settings")||"null");if(saved)settings={...DEFAULTS,...saved}}catch(e){settings={...DEFAULTS}}normalizeSettings();applySettingsToUI()}
 function applySettingsToUI(){$("mapSize").value=settings.mapSize;$("foodCount").value=settings.foodCount;$("foodValue").value=settings.foodValue;$("startLength").value=settings.startLength;$("speed").value=settings.speed;$("speedGrowth").value=settings.speedGrowth;$("wrap").checked=settings.wrap;$("selfCollision").checked=settings.selfCollision;$("grid").checked=settings.grid;$("ghostFood").checked=settings.ghostFood;$("respawn").checked=settings.respawn;$("obstacles").value=settings.obstacles;$("bonusChance").value=settings.bonusChance;$("goldMultiplier").value=settings.goldMultiplier;$("nearMiss").checked=settings.nearMiss;$("perfectBonus").checked=settings.perfectBonus;$("theme").value=settings.theme;$("snakeStyle").value=settings.snakeStyle;$("foodStyle").value=settings.foodStyle;updateLabels()}
 function resizeCanvas(){const side=settings.mapSize;canvas.width=side*30;canvas.height=side*30}
 function resetSettings(){settings={...DEFAULTS};applySettingsToUI();saveSettings();newGame();toast("Settings reset")}
@@ -220,7 +236,7 @@ function bindAll(){
  $("start").addEventListener("click",newGame);$("restart").addEventListener("click",()=>{$("overlay").classList.remove("show");newGame()});$("dismiss").addEventListener("click",()=>{$("overlay").classList.remove("show")});$("pause").addEventListener("click",togglePause);$("random").addEventListener("click",randomize);$("reset").addEventListener("click",resetSettings);document.addEventListener("keydown",onKey);
 }
 function isMobileDevice(){return window.matchMedia("(pointer: coarse)").matches||/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)}
-function setupMobileControls(){if(!isMobileDevice())return;document.body.classList.add("mobile-device");const pad=document.createElement("div");pad.id="mobileControls";pad.setAttribute("aria-label","Mobile snake controls");pad.innerHTML='<button data-dir="up" aria-label="Up">▲</button><div><button data-dir="left" aria-label="Left">◀</button><button data-dir="down" aria-label="Down">▼</button><button data-dir="right" aria-label="Right">▶</button></div>';document.body.appendChild(pad);const directions={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};pad.querySelectorAll("button").forEach(button=>{const press=e=>{e.preventDefault();const d=directions[button.dataset.dir];queueDirection(d[0],d[1])};button.addEventListener("pointerdown",press,{passive:false});button.addEventListener("touchstart",press,{passive:false})});let startX=0,startY=0;canvas.addEventListener("touchstart",e=>{if(e.touches.length!==1)return;startX=e.touches[0].clientX;startY=e.touches[0].clientY;e.preventDefault()},{passive:false});canvas.addEventListener("touchend",e=>{if(!startX&&!startY)return;const dx=e.changedTouches[0].clientX-startX,dy=e.changedTouches[0].clientY-startY;startX=startY=0;if(Math.max(Math.abs(dx),Math.abs(dy))<24)return;if(Math.abs(dx)>Math.abs(dy))queueDirection(dx>0?1:-1,0);else queueDirection(0,dy>0?1:-1);e.preventDefault()},{passive:false})}
+function setupMobileControls(){if(!isMobileDevice())return;document.body.classList.add("mobile-device");const pad=document.createElement("div");pad.id="mobileControls";pad.setAttribute("aria-label","Mobile snake controls");pad.innerHTML='<button data-dir="up" aria-label="Up">▲</button><div><button data-dir="left" aria-label="Left">◀</button><button data-dir="down" aria-label="Down">▼</button><button data-dir="right" aria-label="Right">▶</button></div>';document.body.appendChild(pad);const directions={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};pad.querySelectorAll("button").forEach(button=>{button.addEventListener("pointerdown",e=>{e.preventDefault();const d=directions[button.dataset.dir];queueDirection(d[0],d[1])},{passive:false})});let startX=0,startY=0;canvas.addEventListener("touchstart",e=>{if(e.touches.length!==1)return;startX=e.touches[0].clientX;startY=e.touches[0].clientY;e.preventDefault()},{passive:false});canvas.addEventListener("touchend",e=>{if(!startX&&!startY)return;const dx=e.changedTouches[0].clientX-startX,dy=e.changedTouches[0].clientY-startY;startX=startY=0;if(Math.max(Math.abs(dx),Math.abs(dy))<24)return;if(Math.abs(dx)>Math.abs(dy))queueDirection(dx>0?1:-1,0);else queueDirection(0,dy>0?1:-1);e.preventDefault()},{passive:false})}
 function onKey(e){if(e.target&&e.target.matches&&e.target.matches("input,select,textarea"))return;const k=e.key.toLowerCase();if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k))e.preventDefault();if(k==="arrowup"||k==="w")queueDirection(0,-1);else if(k==="arrowdown"||k==="s")queueDirection(0,1);else if(k==="arrowleft"||k==="a")queueDirection(-1,0);else if(k==="arrowright"||k==="d")queueDirection(1,0);else if(k===" ")togglePause();else if(k==="enter"&&!running){$("overlay").classList.remove("show");newGame()}else if(k==="r")randomize()}
 document.addEventListener("keydown",e=>{
  if(e.key===";"){e.preventDefault();$("featureMenu").classList.contains("show")?closeFeatureMenu():openFeatureMenu()}
