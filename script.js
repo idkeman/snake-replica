@@ -28,14 +28,15 @@ function toggleMusic(on){feature.music=on;if(!on){clearInterval(musicTimer);musi
 function featureTone(freq,dur){try{const a=featureTone.ctx||(featureTone.ctx=new (window.AudioContext||window.webkitAudioContext)());const o=a.createOscillator(),g=a.createGain();o.frequency.value=freq;g.gain.value=feature.volume/1000;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+dur)}catch(e){}}
 let stats=JSON.parse(localStorage.getItem("snake-stats")||'{"games":0,"deaths":0,"food":0,"bestLength":0,"bestTime":0,"powerups":0}');
 let powerups=[];let powerState={shield:0,multiplier:1};
+let nextXFormationId=1;
 
 function featureSave(){localStorage.setItem("snake-feature",JSON.stringify(feature));localStorage.setItem("snake-stats",JSON.stringify(stats))}
-function featureLoad(){try{feature={...feature,...JSON.parse(localStorage.getItem("snake-feature")||"{}")}}catch(e){}try{stats={...stats,...JSON.parse(localStorage.getItem("snake-stats")||"{}")}}catch(e){}featureUI();if(feature.music)toggleMusic(true)}
+function featureLoad(){try{feature={...feature,...JSON.parse(localStorage.getItem("snake-feature")||"{}")}}catch(e){};stats={...stats,...JSON.parse(localStorage.getItem("snake-stats")||"{}")};featureUI()}
 function featureUI(){["powerupsEnabled","soundEnabled","musicEnabled","vibrationEnabled","reducedMotion","largeUI","highContrast"].forEach(id=>{const e=$(id);if(e)e.checked=feature[id.replace("Enabled","")]??false});$("gameMode").value=feature.mode;$("powerupRate").value=feature.powerupRate;$("powerupRateVal").textContent=feature.powerupRate+"%";$("volume").value=feature.volume;$("volumeVal").textContent=feature.volume+"%";document.body.classList.toggle("large-ui",feature.largeUI);document.body.classList.toggle("high-contrast",feature.highContrast);document.body.classList.toggle("reduced-motion",feature.reducedMotion);renderStats();renderAchievements();renderPresets()}
 function renderStats(){$("statsGrid").innerHTML=Object.entries({Games:stats.games,Deaths:stats.deaths,"Food eaten":stats.food,"Best length":stats.bestLength,"Best time":Math.floor(stats.bestTime)+"s","Power-ups":stats.powerups}).map(([k,v])=>"<div><b>"+v+"</b><span>"+k+"</span></div>").join("")}
 function showAchievement(name){const el=$("achievementNotification"),label=$("achievementName");if(!el||!label)return;label.textContent=name;el.classList.remove("show");void el.offsetWidth;el.classList.add("show");clearTimeout(achievementTimer);achievementTimer=setTimeout(()=>el.classList.remove("show"),3000)}
 function unlockAchievement(key,name){if(stats[key])return false;stats[key]=true;featureSave();renderAchievements();showAchievement(name);return true}
-function renderAchievements(){const a=[["Bush camping",!!stats.bushCamping],["Limp",!!stats.limp],["First Bite",stats.food>0],["Century",best>=100],["Long Snake",stats.bestLength>=20],["Dedicated",stats.games>=10],["Survivor",stats.bestTime>=120],["Powered Up",stats.powerups>0]];$("achievements").innerHTML=a.map(x=>"<span class='"+(x[1]?"unlocked":"")+"'>"+(x[1]?"★ ":"☆ ")+x[0]+"</span>").join("")}
+function renderAchievements(){const a=[["Bush camping",!!stats.bushCamping],["Limp",!!stats.limp],["X marks the spot",!!stats.xMarksTheSpot],["Play a different game.",!!stats.playDifferentGame],["First Bite",stats.food>0],["Century",best>=100],["Long Snake",stats.bestLength>=20],["Dedicated",stats.games>=10],["Survivor",stats.bestTime>=120],["Powered Up",stats.powerups>0]];$("achievements").innerHTML=a.map(x=>"<span class='"+(x[1]?"unlocked":"")+"'>"+(x[1]?"★ ":"☆ ")+x[0]+"</span>").join("")}
 function renderPresets(){const p=JSON.parse(localStorage.getItem("snake-presets")||"{}");$("customPresets").innerHTML=Object.keys(p).map(n=>"<button data-custom='"+encodeURIComponent(n)+"'>"+n+"</button>").join("");$("customPresets").querySelectorAll("[data-custom]").forEach(b=>b.onclick=()=>{settings={...DEFAULTS,...p[decodeURIComponent(b.dataset.custom)]};applySettingsToUI();saveSettings();newGame();closeFeatureMenu()})}
 function savePreset(){const n=$("presetName").value.trim();if(!n)return;const p=JSON.parse(localStorage.getItem("snake-presets")||"{}");p[n]={...settings};localStorage.setItem("snake-presets",JSON.stringify(p));renderPresets();toast("Preset saved")}
 function openFeatureMenu(){$("featureMenu").classList.add("show");renderStats();renderAchievements();renderPresets()}
@@ -43,7 +44,7 @@ function closeFeatureMenu(){$("featureMenu").classList.remove("show")}
 function applyMode(){if(feature.mode==="endless"){settings.wrap=true;settings.selfCollision=false}else if(feature.mode==="challenge"){settings.obstacles=Math.max(12,settings.obstacles);settings.foodCount=Math.min(3,settings.foodCount)}else if(feature.mode==="survival"){settings.speedGrowth=Math.max(3,settings.speedGrowth)}else if(feature.mode==="timed"){settings.speed=Math.min(90,settings.speed)}}
 function featureTick(){if(feature.powerups&&Math.random()*100<feature.powerupRate/4){const p=randomOpenCell();if(p)powerups.push({...p,type:["shield","multiplier","shrink","speed"][rand(4)],life:90})}powerups.forEach(p=>p.life--);powerups=powerups.filter(p=>p.life>0)}
 function drawPowerups(){const c=cellSize(),t=THEMES[settings.theme];powerups.forEach(p=>{ctx.fillStyle=t.bonus;ctx.beginPath();ctx.arc((p.x+.5)*c,(p.y+.5)*c,c*.3,0,Math.PI*2);ctx.fill();ctx.fillStyle=t.bg;ctx.font=Math.max(8,c*.28)+"px monospace";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(p.type[0].toUpperCase(),(p.x+.5)*c,(p.y+.5)*c)})}
-function collectPowerup(p){const hit=powerups.find(x=>same(x,p));if(!hit)return;powerups=powerups.filter(x=>x!==hit);if(hit.type==="shield")powerState.shield=120;if(hit.type==="multiplier")powerState.multiplier=2;if(hit.type==="shrink")snake.length=Math.max(2,Math.ceil(snake.length/2));if(hit.type==="speed")powerState.speed=120;stats.powerups++;featureSave();toast(hit.type.toUpperCase()+" POWER-UP");if(feature.vibration)navigator.vibrate?.(30);restartTimerIfNeeded()}
+function collectPowerup(p){const hit=powerups.find(x=>same(x,p));if(!hit)return;powerups=powerups.filter(x=>x!==hit);if(hit.type==="shield")powerState.shield=120;if(hit.type==="multiplier")powerState.multiplier=2;if(hit.type==="shrink")snake.length=Math.max(2,Math.ceil(snake.length/2));if(hit.type==="speed")powerState.speed=120;stats.powerups++;featureSave();toast(hit.type.toUpperCase()+" POWER-UP");if(feature.vibration)navigator.vibrate?.(30)}
 
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
 function rand(n){return Math.floor(Math.random()*n)}
@@ -79,20 +80,44 @@ function applySettingsToUI(){$("mapSize").value=settings.mapSize;$("foodCount").
 function resizeCanvas(){const side=settings.mapSize;canvas.width=side*30;canvas.height=side*30}
 function resetSettings(){settings={...DEFAULTS};applySettingsToUI();saveSettings();newGame();toast("Settings reset")}
 function randomize(){const choices={mapSize:[15,20,25,30,35,40],foodCount:rand(12)+1,foodValue:rand(8)+1,startLength:clamp(rand(10)+2,2,20),speed:35+rand(30)*5,speedGrowth:rand(7)*2,wrap:Math.random()<.35,selfCollision:Math.random()<.85,grid:Math.random()<.5,ghostFood:Math.random()<.35,respawn:true,obstacles:rand(16),bonusChance:rand(61),goldMultiplier:2+rand(6),nearMiss:Math.random()<.5,perfectBonus:Math.random()<.5,theme:Object.keys(THEMES)[rand(4)],snakeStyle:["block","dot","outline","scan"][rand(4)],foodStyle:["block","dot","cross","diamond"][rand(4)]};settings={...settings,...choices};applySettingsToUI();saveSettings();newGame();toast("Random modifier set generated")}
-function startSnake(){const center=Math.floor(settings.mapSize/2);const length=clamp(settings.startLength,1,center+1);settings.startLength=length;snake=[];for(let i=0;i<length;i++)snake.push({x:center-i,y:center});direction={x:1,y:0};queued={x:1,y:0}}
+function startSnake(){const center=Math.floor(settings.mapSize/2);snake=[];for(let i=0;i<settings.startLength;i++)snake.push({x:center-i,y:center});direction={x:1,y:0};queued={x:1,y:0}}
 function cellAvailable(p){if(p.x<0||p.x>=settings.mapSize||p.y<0||p.y>=settings.mapSize)return false;if(snake.some(s=>same(s,p)))return false;if(obstacles.some(o=>same(o,p)))return false;if(foods.some(f=>same(f,p)))return false;return true}
 function randomOpenCell(){const total=settings.mapSize*settings.mapSize;for(let tries=0;tries<total*2;tries++){const p={x:rand(settings.mapSize),y:rand(settings.mapSize)};if(cellAvailable(p))return p}return null}
 function buildObstacles(){obstacles=[];const wanted=settings.obstacles;let attempts=0;while(obstacles.length<wanted&&attempts<wanted*30){attempts++;const p=randomOpenCell();if(!p)break;const center=Math.floor(settings.mapSize/2);if(Math.abs(p.x-center)<3&&Math.abs(p.y-center)<2)continue;obstacles.push(p)}}
-function spawnFood(forceBonus=false){const p=randomOpenCell();if(!p)return;const bonus=forceBonus||Math.random()*100<settings.bonusChance;foods.push({x:p.x,y:p.y,bonus,value:bonus?settings.foodValue*settings.goldMultiplier:settings.foodValue,phase:Math.random()*Math.PI*2})}
+function spawnXFormation(){
+ const offsets=[{x:-1,y:-1},{x:0,y:0},{x:1,y:1},{x:-1,y:1},{x:1,y:-1}];
+ const centers=[];
+ for(let x=1;x<settings.mapSize-1;x++)for(let y=1;y<settings.mapSize-1;y++){
+  const cells=offsets.map(o=>({x:x+o.x,y:y+o.y}));
+  if(cells.every(cellAvailable))centers.push({x,y,cells});
+ }
+ if(!centers.length)return false;
+ const formation=centers[rand(centers.length)];
+ const id=nextXFormationId++;
+ formation.cells.forEach(p=>foods.push({x:p.x,y:p.y,bonus:false,value:settings.foodValue,phase:Math.random()*Math.PI*2,xFormationId:id}));
+ return true;
+}
+function spawnFood(forceBonus=false,forceDifferent=false){
+ const p=randomOpenCell();if(!p)return false;
+ if(forceDifferent||(!foods.some(f=>f.playDifferentGame)&&Math.floor(Math.random()*150)===0)){
+  foods.push({x:p.x,y:p.y,bonus:false,value:settings.foodValue,phase:Math.random()*Math.PI*2,playDifferentGame:true});
+  return true;
+ }
+ const shouldTryX=!forceBonus&&!foods.some(f=>f.xFormationId)&&Math.floor(Math.random()*200)===0;
+ if(shouldTryX&&spawnXFormation())return true;
+ const bonus=forceBonus||Math.random()*100<settings.bonusChance;
+ foods.push({x:p.x,y:p.y,bonus,value:bonus?settings.foodValue*settings.goldMultiplier:settings.foodValue,phase:Math.random()*Math.PI*2});
+ return true;
+}
 function fillFood(){const target=Math.min(settings.foodCount,settings.mapSize*settings.mapSize-1);while(foods.length<target)spawnFood()}
 
 function newGame(){
  applyMode();powerups=[];powerState={shield:0,multiplier:1};
- stopTimer();readSettings();startSnake();buildObstacles();foods=[];fillFood();spawnBushCampingFood();score=0;elapsed=0;particles=[];flash=0;inputQueue=[];running=true;paused=false;gameStart=performance.now();stats.games++;featureSave();updateHUD();draw();startTimer();
+ stopTimer();readSettings();startSnake();buildObstacles();foods=[];nextXFormationId=1;fillFood();spawnBushCampingFood();score=0;elapsed=0;particles=[];flash=0;inputQueue=[];running=true;paused=false;gameStart=performance.now();stats.games++;featureSave();updateHUD();draw();startTimer();
 }
 function startTimer(){stopTimer();timer=setInterval(tick,getTickRate())}
 function stopTimer(){if(timer){clearInterval(timer);timer=null}}
-function getTickRate(){const growth=Math.pow(1-settings.speedGrowth/100,score);const speedBoost=powerState.speed>0?0.65:1;return Math.max(18,Math.round(settings.speed*growth*speedBoost))}
+function getTickRate(){const growth=Math.pow(1-settings.speedGrowth/100,score);return Math.max(18,Math.round(settings.speed*growth))}
 function restartTimerIfNeeded(){if(running&&!paused)startTimer()}
 function queueDirection(x,y){if(!running)return;const base=inputQueue.length?inputQueue[inputQueue.length-1]:queued;if(x===-base.x&&y===-base.y)return;if(x===base.x&&y===base.y)return;if(inputQueue.length<3)inputQueue.push({x,y})}
 function consumeDirection(){if(inputQueue.length)queued=inputQueue.shift();direction=queued}
@@ -102,8 +127,8 @@ function hitsSelf(p){if(!settings.selfCollision)return false;const eating=foods.
 function hitsObstacle(p){return obstacles.some(o=>same(o,p))}
 function eatAt(p){const eaten=foods.filter(f=>same(f,p));if(!eaten.length)return 0;let gained=0;eaten.forEach(f=>{gained+=f.value;burst(f.x,f.y,f.bonus?12:7,f.bonus)});foods=foods.filter(f=>!same(f,p));return gained}
 
-function spawnBushCampingFood(){
- if(stats.bushCamping)return null;
+function spawnBushCampingFood(force=false){
+ if(stats.bushCamping&&!force)return null;
  const candidates=[];
  for(let x=0;x<settings.mapSize;x++){
   for(let y=0;y<settings.mapSize;y++){
@@ -121,9 +146,17 @@ function spawnBushCampingFood(){
 
 function tick(){
  if(!running||paused)return;
- consumeDirection();featureTick();powerState.shield=Math.max(0,powerState.shield-1);powerState.multiplier=powerState.multiplier>1?Math.max(1,powerState.multiplier-.01):1;powerState.speed=Math.max(0,(powerState.speed||0)-1);
+ consumeDirection();featureTick();powerState.shield=Math.max(0,powerState.shield-1);powerState.multiplier=powerState.multiplier>1?Math.max(1,powerState.multiplier-.01):1;
  const head=nextHead();collectPowerup(head);
  if((hitsWall(head)||hitsSelf(head)||hitsObstacle(head))&&powerState.shield<=0){gameOver("Game Over");return}
+ const differentGame=foods.find(f=>f.playDifferentGame&&same(f,head));
+ if(differentGame){
+  foods=foods.filter(f=>f!==differentGame);
+  if(running&&!paused)togglePause();
+  unlockAchievement("playDifferentGame","Play a different game.");
+  window.open("https://www.chess.com/play/computer/Komodo25","_blank","noopener");
+  return;
+ }
  const bush=foods.find(f=>f.bushCamping&&same(f,head));
  if(bush){
   foods=foods.filter(f=>f!==bush);
@@ -131,7 +164,11 @@ function tick(){
   window.location.href="http://scratch.mit.edu/projects/1013099217/";
   return;
  }
+ const xTarget=foods.find(f=>f.xFormationId&&same(f,head));
+ const xFormationId=xTarget?.xFormationId;
  const gained=eatAt(head);
+ const completedX=!!xFormationId&&!foods.some(f=>f.xFormationId===xFormationId);
+ if(completedX)unlockAchievement("xMarksTheSpot","X marks the spot");
  snake.unshift(head);
  if(gained>0){
   score+=Math.round(gained*powerState.multiplier);stats.food++;featureSave();
@@ -160,8 +197,24 @@ function animateParticles(){particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.life-=.0
 function toast(text){const el=$("toast");el.textContent=text;el.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove("show"),1300)}
 function bindRange(id,rerun){$(id).addEventListener("input",()=>{readSettings();saveSettings();if(rerun)restartTimerIfNeeded()})}
 function bindSetting(id,rerun){$(id).addEventListener("change",()=>{readSettings();saveSettings();if(rerun)restartTimerIfNeeded()})}
+function openDevMenu(){const m=$("devMenu");if(!m)return;m.classList.add("show");m.setAttribute("aria-hidden","false");}
+function closeDevMenu(){const m=$("devMenu");if(!m)return;m.classList.remove("show");m.setAttribute("aria-hidden","true");}
+function devSpawnX(){if(!running)newGame();if(spawnXFormation()){toast("DEV: X formation spawned");draw()}else toast("DEV: no room for X formation")}
+function devSpawnBush(){if(!running)newGame();if(spawnBushCampingFood(true)){toast("DEV: Bush camping spawned");draw()}else toast("DEV: no room for bush")}
+function devSpawnDifferentGame(){if(!running)newGame();if(spawnFood(false,true)){toast("DEV: different-game food spawned");draw()}else toast("DEV: no room for different-game food")}
 function bindAll(){
- $("closeFeatureMenu").onclick=closeFeatureMenu;document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>document.querySelectorAll("[data-panel]").forEach(p=>p.hidden=p.dataset.panel!==b.dataset.tab));$("savePreset").onclick=savePreset;$("fullscreen").onclick=()=>document.documentElement.requestFullscreen?.();$("clearStats").onclick=()=>{stats={games:0,deaths:0,food:0,bestLength:0,bestTime:0,powerups:0};featureSave();renderStats();renderAchievements()};$("resetAchievements").onclick=()=>{stats.bushCamping=false;stats.limp=false;featureSave();renderAchievements();toast("Achievements reset")};document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>{const p=b.dataset.preset;settings={...DEFAULTS};if(p==="chaos"){settings.foodCount=8;settings.obstacles=10;settings.bonusChance=40;settings.speed=60;settings.wrap=true}else if(p==="speedrun"){settings.speed=45;settings.speedGrowth=5}else if(p==="maze"){settings.obstacles=20;settings.mapSize=30}else if(p==="zen"){settings.speed=160;settings.wrap=true;settings.selfCollision=false;settings.foodCount=3}applySettingsToUI();saveSettings();newGame();closeFeatureMenu()});
+ $("closeFeatureMenu").onclick=closeFeatureMenu;document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>document.querySelectorAll("[data-panel]").forEach(p=>p.hidden=p.dataset.panel!==b.dataset.tab));$("savePreset").onclick=savePreset;$("fullscreen").onclick=()=>document.documentElement.requestFullscreen?.();$("clearStats").onclick=()=>{stats={games:0,deaths:0,food:0,bestLength:0,bestTime:0,powerups:0};featureSave();renderStats();renderAchievements()};$("resetAchievements").onclick=()=>{stats.bushCamping=false;stats.limp=false;stats.xMarksTheSpot=false;stats.playDifferentGame=false;featureSave();renderAchievements();toast("Achievements reset")};
+ $("devSpawnX").onclick=devSpawnX;
+ $("devSpawnBush").onclick=devSpawnBush;
+ $("devClearFood").onclick=()=>{foods=[];draw();toast("DEV: food cleared")};
+ $("devFillFood").onclick=()=>{fillFood();draw();toast("DEV: food refilled")};
+ $("devScore").onclick=()=>{score+=100;updateHUD();draw();toast("DEV: +100 score")};
+ $("devUnlockX").onclick=()=>unlockAchievement("xMarksTheSpot","X marks the spot");
+ $("devUnlockBush").onclick=()=>unlockAchievement("bushCamping","Bush camping");
+ $("devPlayDifferent").onclick=devSpawnDifferentGame;
+ $("devUnlockDifferent").onclick=()=>unlockAchievement("playDifferentGame","Play a different game.");
+ $("devPause").onclick=togglePause;
+ $("devClose").onclick=closeDevMenu;document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>{const p=b.dataset.preset;settings={...DEFAULTS};if(p==="chaos"){settings.foodCount=8;settings.obstacles=10;settings.bonusChance=40;settings.speed=60;settings.wrap=true}else if(p==="speedrun"){settings.speed=45;settings.speedGrowth=5}else if(p==="maze"){settings.obstacles=20;settings.mapSize=30}else if(p==="zen"){settings.speed=160;settings.wrap=true;settings.selfCollision=false;settings.foodCount=3}applySettingsToUI();saveSettings();newGame();closeFeatureMenu()});
  $("gameMode").onchange=e=>{feature.mode=e.target.value;featureSave()};$("powerupsEnabled").onchange=e=>{feature.powerups=e.target.checked;featureSave()};$("powerupRate").oninput=e=>{feature.powerupRate=+e.target.value;$("powerupRateVal").textContent=e.target.value+"%";featureSave()};$("soundEnabled").onchange=e=>{feature.sound=e.target.checked;featureSave()};$("musicEnabled").onchange=e=>{toggleMusic(e.target.checked);featureSave()};$("vibrationEnabled").onchange=e=>{feature.vibration=e.target.checked;featureSave()};$("volume").oninput=e=>{feature.volume=+e.target.value;$("volumeVal").textContent=e.target.value+"%";featureSave()};["reducedMotion","largeUI","highContrast"].forEach(id=>$(id).onchange=e=>{feature[id]=e.target.checked;document.body.classList.toggle(id==="largeUI"?"large-ui":id==="highContrast"?"high-contrast":"reduced-motion",e.target.checked);featureSave()});
  bindRange("foodCount",false);bindRange("foodValue",false);bindRange("startLength",false);bindRange("speed",true);bindRange("speedGrowth",true);bindRange("obstacles",false);bindRange("bonusChance",false);bindRange("goldMultiplier",false);
  ["mapSize","wrap","selfCollision","grid","ghostFood","respawn","nearMiss","perfectBonus","theme","snakeStyle","foodStyle"].forEach(id=>bindSetting(id,false));
@@ -170,8 +223,9 @@ function bindAll(){
 function isMobileDevice(){return window.matchMedia("(pointer: coarse)").matches||/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)}
 function setupMobileControls(){if(!isMobileDevice())return;document.body.classList.add("mobile-device");const pad=document.createElement("div");pad.id="mobileControls";pad.setAttribute("aria-label","Mobile snake controls");pad.innerHTML='<button data-dir="up" aria-label="Up">▲</button><div><button data-dir="left" aria-label="Left">◀</button><button data-dir="down" aria-label="Down">▼</button><button data-dir="right" aria-label="Right">▶</button></div>';document.body.appendChild(pad);const directions={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};pad.querySelectorAll("button").forEach(button=>{const press=e=>{e.preventDefault();const d=directions[button.dataset.dir];queueDirection(d[0],d[1])};button.addEventListener("pointerdown",press,{passive:false});button.addEventListener("touchstart",press,{passive:false})});let startX=0,startY=0;canvas.addEventListener("touchstart",e=>{if(e.touches.length!==1)return;startX=e.touches[0].clientX;startY=e.touches[0].clientY;e.preventDefault()},{passive:false});canvas.addEventListener("touchend",e=>{if(!startX&&!startY)return;const dx=e.changedTouches[0].clientX-startX,dy=e.changedTouches[0].clientY-startY;startX=startY=0;if(Math.max(Math.abs(dx),Math.abs(dy))<24)return;if(Math.abs(dx)>Math.abs(dy))queueDirection(dx>0?1:-1,0);else queueDirection(0,dy>0?1:-1);e.preventDefault()},{passive:false})}
 function onKey(e){if(e.target&&e.target.matches&&e.target.matches("input,select,textarea"))return;const k=e.key.toLowerCase();if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k))e.preventDefault();if(k==="arrowup"||k==="w")queueDirection(0,-1);else if(k==="arrowdown"||k==="s")queueDirection(0,1);else if(k==="arrowleft"||k==="a")queueDirection(-1,0);else if(k==="arrowright"||k==="d")queueDirection(1,0);else if(k===" ")togglePause();else if(k==="enter"&&!running){$("overlay").classList.remove("show");newGame()}else if(k==="r")randomize()}
-document.addEventListener("keydown",e=>{if(e.key===";"){e.preventDefault();$("featureMenu").classList.contains("show")?closeFeatureMenu():openFeatureMenu()}});
+document.addEventListener("keydown",e=>{if(e.ctrlKey&&e.key==="["){e.preventDefault();closeFeatureMenu();$("devMenu").classList.contains("show")?closeDevMenu():openDevMenu();return}if(e.key===";"){e.preventDefault();$("featureMenu").classList.contains("show")?closeFeatureMenu():openFeatureMenu()}});
 
+function playDifferentGame(){if(!stats.playDifferentGame)unlockAchievement("playDifferentGame","Play a different game.");if(running&&!paused)togglePause();window.open("https://www.chess.com/play/computer/Komodo25","_blank","noopener");}
 function triggerLimp(){if(running)stopTimer();running=false;paused=false;unlockAchievement("limp","Limp");const overlay=$("overlay");if(overlay)overlay.classList.remove("show");const limp=$("limpOverlay");if(limp){limp.classList.add("show");limp.setAttribute("aria-hidden","false")}}
 function setupSecretCode(){const input=$("codeInput"),limp=$("limpOverlay"),restart=$("limpRestart");if(!input||!limp||!restart)return;input.addEventListener("keydown",e=>{if(e.key!=="Enter")return;e.preventDefault();if(input.value.trim().toLowerCase()==="limp")triggerLimp();input.value=""});restart.addEventListener("click",()=>{limp.classList.remove("show");limp.setAttribute("aria-hidden","true");newGame()})}
 
