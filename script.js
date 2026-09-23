@@ -32,7 +32,7 @@ function featureSave(){localStorage.setItem("snake-feature",JSON.stringify(featu
 function featureLoad(){try{feature={...feature,...JSON.parse(localStorage.getItem("snake-feature")||"{}")}}catch(e){};stats={...stats,...JSON.parse(localStorage.getItem("snake-stats")||"{}")};featureUI()}
 function featureUI(){["powerupsEnabled","soundEnabled","musicEnabled","vibrationEnabled","reducedMotion","largeUI","highContrast"].forEach(id=>{const e=$(id);if(e)e.checked=feature[id.replace("Enabled","")]??false});$("gameMode").value=feature.mode;$("powerupRate").value=feature.powerupRate;$("powerupRateVal").textContent=feature.powerupRate+"%";$("volume").value=feature.volume;$("volumeVal").textContent=feature.volume+"%";document.body.classList.toggle("large-ui",feature.largeUI);document.body.classList.toggle("high-contrast",feature.highContrast);document.body.classList.toggle("reduced-motion",feature.reducedMotion);renderStats();renderAchievements();renderPresets()}
 function renderStats(){$("statsGrid").innerHTML=Object.entries({Games:stats.games,Deaths:stats.deaths,"Food eaten":stats.food,"Best length":stats.bestLength,"Best time":Math.floor(stats.bestTime)+"s","Power-ups":stats.powerups}).map(([k,v])=>"<div><b>"+v+"</b><span>"+k+"</span></div>").join("")}
-function renderAchievements(){const a=[["First Bite",stats.food>0],["Century",best>=100],["Long Snake",stats.bestLength>=20],["Dedicated",stats.games>=10],["Survivor",stats.bestTime>=120],["Powered Up",stats.powerups>0]];$("achievements").innerHTML=a.map(x=>"<span class='"+(x[1]?"unlocked":"")+"'>"+(x[1]?"★ ":"☆ ")+x[0]+"</span>").join("")}
+function renderAchievements(){const a=[["Limp",!!stats.limp],["First Bite",stats.food>0],["Century",best>=100],["Long Snake",stats.bestLength>=20],["Dedicated",stats.games>=10],["Survivor",stats.bestTime>=120],["Powered Up",stats.powerups>0]];$("achievements").innerHTML=a.map(x=>"<span class='"+(x[1]?"unlocked":"")+"'>"+(x[1]?"★ ":"☆ ")+x[0]+"</span>").join("")}
 function renderPresets(){const p=JSON.parse(localStorage.getItem("snake-presets")||"{}");$("customPresets").innerHTML=Object.keys(p).map(n=>"<button data-custom='"+encodeURIComponent(n)+"'>"+n+"</button>").join("");$("customPresets").querySelectorAll("[data-custom]").forEach(b=>b.onclick=()=>{settings={...DEFAULTS,...p[decodeURIComponent(b.dataset.custom)]};applySettingsToUI();saveSettings();newGame();closeFeatureMenu()})}
 function savePreset(){const n=$("presetName").value.trim();if(!n)return;const p=JSON.parse(localStorage.getItem("snake-presets")||"{}");p[n]={...settings};localStorage.setItem("snake-presets",JSON.stringify(p));renderPresets();toast("Preset saved")}
 function openFeatureMenu(){$("featureMenu").classList.add("show");renderStats();renderAchievements();renderPresets()}
@@ -586,6 +586,7 @@ function setupMobileControls(){
  },{passive:false});
 }
 function onKey(e){
+ if(e.target&&e.target.matches&&e.target.matches("input,select,textarea"))return;
  const k=e.key.toLowerCase();
  if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k))e.preventDefault();
  if(k==="arrowup"||k==="w")queueDirection(0,-1);
@@ -597,6 +598,35 @@ function onKey(e){
  else if(k==="r")randomize();
 }
 document.addEventListener("keydown",e=>{if(e.key===";"){e.preventDefault();$("featureMenu").classList.contains("show")?closeFeatureMenu():openFeatureMenu()}});
+function triggerLimp(){
+ if(running)stopTimer();
+ running=false;
+ paused=false;
+ stats.limp=true;
+ featureSave();
+ renderAchievements();
+ const overlay=$("overlay");
+ if(overlay)overlay.classList.remove("show");
+ const limp=$("limpOverlay");
+ if(limp){limp.classList.add("show");limp.setAttribute("aria-hidden","false")}
+}
+function setupSecretCode(){
+ const input=$("codeInput");
+ const limp=$("limpOverlay");
+ const restart=$("limpRestart");
+ if(!input||!limp||!restart)return;
+ input.addEventListener("keydown",e=>{
+  if(e.key!=="Enter")return;
+  e.preventDefault();
+  if(input.value.trim().toLowerCase()==="limp")triggerLimp();
+  input.value="";
+ });
+ restart.addEventListener("click",()=>{
+  limp.classList.remove("show");
+  limp.setAttribute("aria-hidden","true");
+  newGame();
+ });
+}
 function safeLoad(){
  featureLoad();
  loadSettings();
@@ -604,6 +634,7 @@ function safeLoad(){
 }
 safeLoad();
 bindAll();
+setupSecretCode();
 newGame();
 animateParticles();
 })();
