@@ -84,7 +84,25 @@ function startSnake(){const center=Math.floor(settings.mapSize/2);const length=c
 function cellAvailable(p){if(p.x<0||p.x>=settings.mapSize||p.y<0||p.y>=settings.mapSize)return false;if(snake.some(s=>same(s,p)))return false;if(obstacles.some(o=>same(o,p)))return false;if(foods.some(f=>same(f,p)))return false;return true}
 function randomOpenCell(){const total=settings.mapSize*settings.mapSize;for(let tries=0;tries<total*2;tries++){const p={x:rand(settings.mapSize),y:rand(settings.mapSize)};if(cellAvailable(p))return p}return null}
 function buildObstacles(){obstacles=[];const wanted=settings.obstacles;let attempts=0;while(obstacles.length<wanted&&attempts<wanted*30){attempts++;const p=randomOpenCell();if(!p)break;const center=Math.floor(settings.mapSize/2);if(Math.abs(p.x-center)<3&&Math.abs(p.y-center)<2)continue;obstacles.push(p)}}
-function spawnXFormation(){\n const offsets=[[-1,-1],[0,0],[1,1],[-1,1],[1,-1]];\n const candidates=[];\n for(let x=1;x<settings.mapSize-1;x++){\n  for(let y=1;y<settings.mapSize-1;y++){\n   if(offsets.every(([dx,dy])=>cellAvailable({x:x+dx,y:y+dy})))candidates.push({x,y});\n  }\n }\n if(!candidates.length)return false;\n const center=candidates[rand(candidates.length)];\n const id=++xFormationId;\n offsets.forEach(([dx,dy])=>{const p={x:center.x+dx,y:center.y+dy};foods.push({x:p.x,y:p.y,bonus:false,value:settings.foodValue,phase:Math.random()*Math.PI*2,xFormation:id})});\n return true;\n}\nfunction spawnFood(forceBonus=false){\n if(!forceBonus&&Math.random()<1/150){const p=randomOpenCell();if(p){foods.push({x:p.x,y:p.y,bonus:false,value:0,phase:0,differentGame:true});return}}\n if(!forceBonus&&Math.random()<1/200&&spawnXFormation())return;\n const p=randomOpenCell();if(!p)return;const bonus=forceBonus||Math.random()*100<settings.bonusChance;foods.push({x:p.x,y:p.y,bonus,value:bonus?settings.foodValue*settings.goldMultiplier:settings.foodValue,phase:Math.random()*Math.PI*2});\n}
+function spawnXFormation(){
+ const offsets=[[-1,-1],[0,0],[1,1],[-1,1],[1,-1]];
+ const candidates=[];
+ for(let x=1;x<settings.mapSize-1;x++){
+  for(let y=1;y<settings.mapSize-1;y++){
+   if(offsets.every(([dx,dy])=>cellAvailable({x:x+dx,y:y+dy})))candidates.push({x,y});
+  }
+ }
+ if(!candidates.length)return false;
+ const center=candidates[rand(candidates.length)];
+ const id=++xFormationId;
+ offsets.forEach(([dx,dy])=>{const p={x:center.x+dx,y:center.y+dy};foods.push({x:p.x,y:p.y,bonus:false,value:settings.foodValue,phase:Math.random()*Math.PI*2,xFormation:id})});
+ return true;
+}
+function spawnFood(forceBonus=false){
+ if(!forceBonus&&Math.random()<1/150){const p=randomOpenCell();if(p){foods.push({x:p.x,y:p.y,bonus:false,value:0,phase:0,differentGame:true});return}}
+ if(!forceBonus&&Math.random()<1/200&&spawnXFormation())return;
+ const p=randomOpenCell();if(!p)return;const bonus=forceBonus||Math.random()*100<settings.bonusChance;foods.push({x:p.x,y:p.y,bonus,value:bonus?settings.foodValue*settings.goldMultiplier:settings.foodValue,phase:Math.random()*Math.PI*2});
+}
 function fillFood(){const target=Math.min(settings.foodCount,settings.mapSize*settings.mapSize-1);while(foods.length<target)spawnFood()}
 
 function newGame(){
@@ -103,7 +121,15 @@ function hitsSelf(p){if(!settings.selfCollision)return false;const eating=foods.
 function hitsObstacle(p){return obstacles.some(o=>same(o,p))}
 function eatAt(p){const eaten=foods.filter(f=>same(f,p));if(!eaten.length)return 0;let gained=0;eaten.forEach(f=>{gained+=f.value;burst(f.x,f.y,f.bonus?12:7,f.bonus)});const completed=eaten.some(f=>f.xFormation&& !foods.some(other=>other.xFormation===f.xFormation&&!same(other,p)));const differentGame=eaten.some(f=>f.differentGame);foods=foods.filter(f=>!same(f,p));if(completed)unlockAchievement("xMarksTheSpot","X marks the spot");if(differentGame)triggerDifferentGame();return gained}
 
-function triggerDifferentGame(){\n stopTimer();\n paused=true;\n unlockAchievement("playDifferentGame","Play a different game");\n const tab=window.open("https://www.chess.com/play/computer/Komodo25","_blank","noopener,noreferrer");\n if(!tab)toast("Pop-up blocked — open Chess.com manually");\n}\n\nfunction devSpawnFood(type){
+function triggerDifferentGame(){
+ stopTimer();
+ paused=true;
+ unlockAchievement("playDifferentGame","Play a different game");
+ const tab=window.open("https://www.chess.com/play/computer/Komodo25","_blank","noopener,noreferrer");
+ if(!tab)toast("Pop-up blocked — open Chess.com manually");
+}
+
+function devSpawnFood(type){
  const p=randomOpenCell();
  if(!p){toast("No open cell available");return}
  if(type==="bush"){
