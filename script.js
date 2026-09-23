@@ -22,7 +22,10 @@ let running=false,paused=false,gameStart=0,elapsed=0,timer=null,lastFrame=0;
 let inputQueue=[];
 let particles=[],flash=0,toastTimer=null;
 
-let feature={mode:"classic",powerups:false,powerupRate:20,sound:true,music:false,vibration:true,volume:45,reducedMotion:false,largeUI:false,highContrast:false};\nlet musicTimer=null;\nfunction toggleMusic(on){feature.music=on;if(!on){clearInterval(musicTimer);musicTimer=null;return}if(musicTimer)return;musicTimer=setInterval(()=>{if(feature.sound)featureTone(110+Math.random()*80,.35)},900)}\nfunction featureTone(freq,dur){try{const a=featureTone.ctx||(featureTone.ctx=new (window.AudioContext||window.webkitAudioContext)());const o=a.createOscillator(),g=a.createGain();o.frequency.value=freq;g.gain.value=feature.volume/1000;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+dur)}catch(e){}}
+let feature={mode:"classic",powerups:false,powerupRate:20,sound:true,music:false,vibration:true,volume:45,reducedMotion:false,largeUI:false,highContrast:false};
+let musicTimer=null;
+function toggleMusic(on){feature.music=on;if(!on){clearInterval(musicTimer);musicTimer=null;return}if(musicTimer)return;musicTimer=setInterval(()=>{if(feature.sound)featureTone(110+Math.random()*80,.35)},900)}
+function featureTone(freq,dur){try{const a=featureTone.ctx||(featureTone.ctx=new (window.AudioContext||window.webkitAudioContext)());const o=a.createOscillator(),g=a.createGain();o.frequency.value=freq;g.gain.value=feature.volume/1000;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+dur)}catch(e){}}
 let stats=JSON.parse(localStorage.getItem("snake-stats")||'{"games":0,"deaths":0,"food":0,"bestLength":0,"bestTime":0,"powerups":0}');
 let powerups=[];let powerState={shield:0,multiplier:1};
 function featureSave(){localStorage.setItem("snake-feature",JSON.stringify(feature));localStorage.setItem("snake-stats",JSON.stringify(stats))}
@@ -194,7 +197,8 @@ function fillFood(){
  const target=Math.min(settings.foodCount,settings.mapSize*settings.mapSize-1);
  while(foods.length<target)spawnFood();
 }
-function newGame(){\n applyMode(); powerups=[];powerState={shield:0,multiplier:1};
+function newGame(){
+ applyMode(); powerups=[];powerState={shield:0,multiplier:1};
  stopTimer();
  readSettings();
  startSnake();
@@ -273,7 +277,8 @@ function eatAt(p){
 function tick(){
  if(!running||paused)return;
  consumeDirection();
- featureTick(); powerState.shield=Math.max(0,powerState.shield-1);powerState.multiplier=powerState.multiplier>1?Math.max(1,powerState.multiplier-.01):1;const head=nextHead();\n collectPowerup(head);
+ featureTick(); powerState.shield=Math.max(0,powerState.shield-1);powerState.multiplier=powerState.multiplier>1?Math.max(1,powerState.multiplier-.01):1;const head=nextHead();
+ collectPowerup(head);
  if((hitsWall(head)||hitsSelf(head)||hitsObstacle(head))&&powerState.shield<=0){
   gameOver("Game Over");
   return;
@@ -305,7 +310,8 @@ function nearMissCheck(head){
   toast("Near-miss +1");
  }
 }
-function gameOver(reason){\n stats.deaths++;stats.bestLength=Math.max(stats.bestLength,snake.length);stats.bestTime=Math.max(stats.bestTime,elapsed);featureSave();
+function gameOver(reason){
+ stats.deaths++;stats.bestLength=Math.max(stats.bestLength,snake.length);stats.bestTime=Math.max(stats.bestTime,elapsed);featureSave();
  running=false;
  paused=false;
  stopTimer();
@@ -521,7 +527,9 @@ function bindSetting(id,rerun){
   if(rerun)restartTimerIfNeeded();
  });
 }
-function bindAll(){\n $("closeFeatureMenu").onclick=closeFeatureMenu;document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>document.querySelectorAll("[data-panel]").forEach(p=>p.hidden=p.dataset.panel!==b.dataset.tab));$("savePreset").onclick=savePreset;$("fullscreen").onclick=()=>document.documentElement.requestFullscreen?.();$("clearStats").onclick=()=>{stats={games:0,deaths:0,food:0,bestLength:0,bestTime:0,powerups:0};featureSave();renderStats()};document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>{const p=b.dataset.preset;settings={...DEFAULTS};if(p==="chaos"){settings.foodCount=8;settings.obstacles=10;settings.bonusChance=40;settings.speed=60;settings.wrap=true}else if(p==="speedrun"){settings.speed=45;settings.speedGrowth=5}else if(p==="maze"){settings.obstacles=20;settings.mapSize=30}else if(p==="zen"){settings.speed=160;settings.wrap=true;settings.selfCollision=false;settings.foodCount=3}applySettingsToUI();saveSettings();newGame();closeFeatureMenu()});\n $("gameMode").onchange=e=>{feature.mode=e.target.value;featureSave()};$("powerupsEnabled").onchange=e=>{feature.powerups=e.target.checked;featureSave()};$("powerupRate").oninput=e=>{feature.powerupRate=+e.target.value;$("powerupRateVal").textContent=e.target.value+"%";featureSave()};$("soundEnabled").onchange=e=>{feature.sound=e.target.checked;featureSave()};$("musicEnabled").onchange=e=>{toggleMusic(e.target.checked);featureSave()};$("vibrationEnabled").onchange=e=>{feature.vibration=e.target.checked;featureSave()};$("volume").oninput=e=>{feature.volume=+e.target.value;$("volumeVal").textContent=e.target.value+"%";featureSave()};["reducedMotion","largeUI","highContrast"].forEach(id=>$(id).onchange=e=>{feature[id]=e.target.checked;document.body.classList.toggle(id==="largeUI"?"large-ui":id==="highContrast"?"high-contrast":"reduced-motion",e.target.checked);featureSave()});
+function bindAll(){
+ $("closeFeatureMenu").onclick=closeFeatureMenu;document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>document.querySelectorAll("[data-panel]").forEach(p=>p.hidden=p.dataset.panel!==b.dataset.tab));$("savePreset").onclick=savePreset;$("fullscreen").onclick=()=>document.documentElement.requestFullscreen?.();$("clearStats").onclick=()=>{stats={games:0,deaths:0,food:0,bestLength:0,bestTime:0,powerups:0};featureSave();renderStats()};document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>{const p=b.dataset.preset;settings={...DEFAULTS};if(p==="chaos"){settings.foodCount=8;settings.obstacles=10;settings.bonusChance=40;settings.speed=60;settings.wrap=true}else if(p==="speedrun"){settings.speed=45;settings.speedGrowth=5}else if(p==="maze"){settings.obstacles=20;settings.mapSize=30}else if(p==="zen"){settings.speed=160;settings.wrap=true;settings.selfCollision=false;settings.foodCount=3}applySettingsToUI();saveSettings();newGame();closeFeatureMenu()});
+ $("gameMode").onchange=e=>{feature.mode=e.target.value;featureSave()};$("powerupsEnabled").onchange=e=>{feature.powerups=e.target.checked;featureSave()};$("powerupRate").oninput=e=>{feature.powerupRate=+e.target.value;$("powerupRateVal").textContent=e.target.value+"%";featureSave()};$("soundEnabled").onchange=e=>{feature.sound=e.target.checked;featureSave()};$("musicEnabled").onchange=e=>{toggleMusic(e.target.checked);featureSave()};$("vibrationEnabled").onchange=e=>{feature.vibration=e.target.checked;featureSave()};$("volume").oninput=e=>{feature.volume=+e.target.value;$("volumeVal").textContent=e.target.value+"%";featureSave()};["reducedMotion","largeUI","highContrast"].forEach(id=>$(id).onchange=e=>{feature[id]=e.target.checked;document.body.classList.toggle(id==="largeUI"?"large-ui":id==="highContrast"?"high-contrast":"reduced-motion",e.target.checked);featureSave()});
  bindRange("foodCount",false);
  bindRange("foodValue",false);
  bindRange("startLength",false);
@@ -588,7 +596,9 @@ function onKey(e){
  else if(k==="enter"&&!running){$("overlay").classList.remove("show");newGame()}
  else if(k==="r")randomize();
 }
-document.addEventListener("keydown",e=>{if(e.key===";"){e.preventDefault();$("featureMenu").classList.contains("show")?closeFeatureMenu():openFeatureMenu()}});\nfunction safeLoad(){\n featureLoad();
+document.addEventListener("keydown",e=>{if(e.key===";"){e.preventDefault();$("featureMenu").classList.contains("show")?closeFeatureMenu():openFeatureMenu()}});
+function safeLoad(){
+ featureLoad();
  loadSettings();
  readSettings();
 }
