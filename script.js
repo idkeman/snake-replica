@@ -30,7 +30,7 @@ let stats=JSON.parse(localStorage.getItem("snake-stats")||'{"games":0,"deaths":0
 let powerups=[];let powerState={shield:0,multiplier:1};
 
 function featureSave(){localStorage.setItem("snake-feature",JSON.stringify(feature));localStorage.setItem("snake-stats",JSON.stringify(stats))}
-function featureLoad(){try{feature={...feature,...JSON.parse(localStorage.getItem("snake-feature")||"{}")}}catch(e){};stats={...stats,...JSON.parse(localStorage.getItem("snake-stats")||"{}")};featureUI()}
+function featureLoad(){try{feature={...feature,...JSON.parse(localStorage.getItem("snake-feature")||"{}")}}catch(e){}try{stats={...stats,...JSON.parse(localStorage.getItem("snake-stats")||"{}")}}catch(e){}featureUI();if(feature.music)toggleMusic(true)}
 function featureUI(){["powerupsEnabled","soundEnabled","musicEnabled","vibrationEnabled","reducedMotion","largeUI","highContrast"].forEach(id=>{const e=$(id);if(e)e.checked=feature[id.replace("Enabled","")]??false});$("gameMode").value=feature.mode;$("powerupRate").value=feature.powerupRate;$("powerupRateVal").textContent=feature.powerupRate+"%";$("volume").value=feature.volume;$("volumeVal").textContent=feature.volume+"%";document.body.classList.toggle("large-ui",feature.largeUI);document.body.classList.toggle("high-contrast",feature.highContrast);document.body.classList.toggle("reduced-motion",feature.reducedMotion);renderStats();renderAchievements();renderPresets()}
 function renderStats(){$("statsGrid").innerHTML=Object.entries({Games:stats.games,Deaths:stats.deaths,"Food eaten":stats.food,"Best length":stats.bestLength,"Best time":Math.floor(stats.bestTime)+"s","Power-ups":stats.powerups}).map(([k,v])=>"<div><b>"+v+"</b><span>"+k+"</span></div>").join("")}
 function showAchievement(name){const el=$("achievementNotification"),label=$("achievementName");if(!el||!label)return;label.textContent=name;el.classList.remove("show");void el.offsetWidth;el.classList.add("show");clearTimeout(achievementTimer);achievementTimer=setTimeout(()=>el.classList.remove("show"),3000)}
@@ -43,7 +43,7 @@ function closeFeatureMenu(){$("featureMenu").classList.remove("show")}
 function applyMode(){if(feature.mode==="endless"){settings.wrap=true;settings.selfCollision=false}else if(feature.mode==="challenge"){settings.obstacles=Math.max(12,settings.obstacles);settings.foodCount=Math.min(3,settings.foodCount)}else if(feature.mode==="survival"){settings.speedGrowth=Math.max(3,settings.speedGrowth)}else if(feature.mode==="timed"){settings.speed=Math.min(90,settings.speed)}}
 function featureTick(){if(feature.powerups&&Math.random()*100<feature.powerupRate/4){const p=randomOpenCell();if(p)powerups.push({...p,type:["shield","multiplier","shrink","speed"][rand(4)],life:90})}powerups.forEach(p=>p.life--);powerups=powerups.filter(p=>p.life>0)}
 function drawPowerups(){const c=cellSize(),t=THEMES[settings.theme];powerups.forEach(p=>{ctx.fillStyle=t.bonus;ctx.beginPath();ctx.arc((p.x+.5)*c,(p.y+.5)*c,c*.3,0,Math.PI*2);ctx.fill();ctx.fillStyle=t.bg;ctx.font=Math.max(8,c*.28)+"px monospace";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(p.type[0].toUpperCase(),(p.x+.5)*c,(p.y+.5)*c)})}
-function collectPowerup(p){const hit=powerups.find(x=>same(x,p));if(!hit)return;powerups=powerups.filter(x=>x!==hit);if(hit.type==="shield")powerState.shield=120;if(hit.type==="multiplier")powerState.multiplier=2;if(hit.type==="shrink")snake.length=Math.max(2,Math.ceil(snake.length/2));if(hit.type==="speed")powerState.speed=120;stats.powerups++;featureSave();toast(hit.type.toUpperCase()+" POWER-UP");if(feature.vibration)navigator.vibrate?.(30)}
+function collectPowerup(p){const hit=powerups.find(x=>same(x,p));if(!hit)return;powerups=powerups.filter(x=>x!==hit);if(hit.type==="shield")powerState.shield=120;if(hit.type==="multiplier")powerState.multiplier=2;if(hit.type==="shrink")snake.length=Math.max(2,Math.ceil(snake.length/2));if(hit.type==="speed")powerState.speed=120;stats.powerups++;featureSave();toast(hit.type.toUpperCase()+" POWER-UP");if(feature.vibration)navigator.vibrate?.(30);restartTimerIfNeeded()}
 
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
 function rand(n){return Math.floor(Math.random()*n)}
@@ -79,7 +79,7 @@ function applySettingsToUI(){$("mapSize").value=settings.mapSize;$("foodCount").
 function resizeCanvas(){const side=settings.mapSize;canvas.width=side*30;canvas.height=side*30}
 function resetSettings(){settings={...DEFAULTS};applySettingsToUI();saveSettings();newGame();toast("Settings reset")}
 function randomize(){const choices={mapSize:[15,20,25,30,35,40],foodCount:rand(12)+1,foodValue:rand(8)+1,startLength:clamp(rand(10)+2,2,20),speed:35+rand(30)*5,speedGrowth:rand(7)*2,wrap:Math.random()<.35,selfCollision:Math.random()<.85,grid:Math.random()<.5,ghostFood:Math.random()<.35,respawn:true,obstacles:rand(16),bonusChance:rand(61),goldMultiplier:2+rand(6),nearMiss:Math.random()<.5,perfectBonus:Math.random()<.5,theme:Object.keys(THEMES)[rand(4)],snakeStyle:["block","dot","outline","scan"][rand(4)],foodStyle:["block","dot","cross","diamond"][rand(4)]};settings={...settings,...choices};applySettingsToUI();saveSettings();newGame();toast("Random modifier set generated")}
-function startSnake(){const center=Math.floor(settings.mapSize/2);snake=[];for(let i=0;i<settings.startLength;i++)snake.push({x:center-i,y:center});direction={x:1,y:0};queued={x:1,y:0}}
+function startSnake(){const center=Math.floor(settings.mapSize/2);const length=clamp(settings.startLength,1,center+1);settings.startLength=length;snake=[];for(let i=0;i<length;i++)snake.push({x:center-i,y:center});direction={x:1,y:0};queued={x:1,y:0}}
 function cellAvailable(p){if(p.x<0||p.x>=settings.mapSize||p.y<0||p.y>=settings.mapSize)return false;if(snake.some(s=>same(s,p)))return false;if(obstacles.some(o=>same(o,p)))return false;if(foods.some(f=>same(f,p)))return false;return true}
 function randomOpenCell(){const total=settings.mapSize*settings.mapSize;for(let tries=0;tries<total*2;tries++){const p={x:rand(settings.mapSize),y:rand(settings.mapSize)};if(cellAvailable(p))return p}return null}
 function buildObstacles(){obstacles=[];const wanted=settings.obstacles;let attempts=0;while(obstacles.length<wanted&&attempts<wanted*30){attempts++;const p=randomOpenCell();if(!p)break;const center=Math.floor(settings.mapSize/2);if(Math.abs(p.x-center)<3&&Math.abs(p.y-center)<2)continue;obstacles.push(p)}}
@@ -92,7 +92,7 @@ function newGame(){
 }
 function startTimer(){stopTimer();timer=setInterval(tick,getTickRate())}
 function stopTimer(){if(timer){clearInterval(timer);timer=null}}
-function getTickRate(){const growth=Math.pow(1-settings.speedGrowth/100,score);return Math.max(18,Math.round(settings.speed*growth))}
+function getTickRate(){const growth=Math.pow(1-settings.speedGrowth/100,score);const speedBoost=powerState.speed>0?0.65:1;return Math.max(18,Math.round(settings.speed*growth*speedBoost))}
 function restartTimerIfNeeded(){if(running&&!paused)startTimer()}
 function queueDirection(x,y){if(!running)return;const base=inputQueue.length?inputQueue[inputQueue.length-1]:queued;if(x===-base.x&&y===-base.y)return;if(x===base.x&&y===base.y)return;if(inputQueue.length<3)inputQueue.push({x,y})}
 function consumeDirection(){if(inputQueue.length)queued=inputQueue.shift();direction=queued}
@@ -121,7 +121,7 @@ function spawnBushCampingFood(){
 
 function tick(){
  if(!running||paused)return;
- consumeDirection();featureTick();powerState.shield=Math.max(0,powerState.shield-1);powerState.multiplier=powerState.multiplier>1?Math.max(1,powerState.multiplier-.01):1;
+ consumeDirection();featureTick();powerState.shield=Math.max(0,powerState.shield-1);powerState.multiplier=powerState.multiplier>1?Math.max(1,powerState.multiplier-.01):1;powerState.speed=Math.max(0,(powerState.speed||0)-1);
  const head=nextHead();collectPowerup(head);
  if((hitsWall(head)||hitsSelf(head)||hitsObstacle(head))&&powerState.shield<=0){gameOver("Game Over");return}
  const bush=foods.find(f=>f.bushCamping&&same(f,head));
