@@ -1,3 +1,20 @@
+
+let feature={mode:"classic",powerups:false,powerupRate:20,sound:true,vibration:true,volume:45,reducedMotion:false,largeUI:false,highContrast:false};
+let stats=JSON.parse(localStorage.getItem("snake-stats")||'{"games":0,"deaths":0,"food":0,"bestLength":0,"bestTime":0,"powerups":0}');
+let powerups=[];let powerState={shield:0,multiplier:1};
+function featureSave(){localStorage.setItem("snake-feature",JSON.stringify(feature));localStorage.setItem("snake-stats",JSON.stringify(stats))}
+function featureLoad(){try{feature={...feature,...JSON.parse(localStorage.getItem("snake-feature")||"{}")}}catch(e){};stats={...stats,...JSON.parse(localStorage.getItem("snake-stats")||"{}")};featureUI()}
+function featureUI(){["powerupsEnabled","soundEnabled","vibrationEnabled","reducedMotion","largeUI","highContrast"].forEach(id=>{const e=$(id);if(e)e.checked=feature[id.replace("Enabled","")]??false});$("gameMode").value=feature.mode;$("powerupRate").value=feature.powerupRate;$("powerupRateVal").textContent=feature.powerupRate+"%";$("volume").value=feature.volume;$("volumeVal").textContent=feature.volume+"%";document.body.classList.toggle("large-ui",feature.largeUI);document.body.classList.toggle("high-contrast",feature.highContrast);document.body.classList.toggle("reduced-motion",feature.reducedMotion);renderStats();renderAchievements();renderPresets()}
+function renderStats(){$("statsGrid").innerHTML=Object.entries({Games:stats.games,Deaths:stats.deaths,"Food eaten":stats.food,"Best length":stats.bestLength,"Best time":Math.floor(stats.bestTime)+"s","Power-ups":stats.powerups}).map(([k,v])=>"<div><b>"+v+"</b><span>"+k+"</span></div>").join("")}
+function renderAchievements(){const a=[["First Bite",stats.food>0],["Century",best>=100],["Long Snake",stats.bestLength>=20],["Dedicated",stats.games>=10],["Survivor",stats.bestTime>=120],["Powered Up",stats.powerups>0]];$("achievements").innerHTML=a.map(x=>"<span class='"+(x[1]?"unlocked":"")+"'>"+(x[1]?"★ ":"☆ ")+x[0]+"</span>").join("")}
+function renderPresets(){const p=JSON.parse(localStorage.getItem("snake-presets")||"{}");$("customPresets").innerHTML=Object.keys(p).map(n=>"<button data-custom='"+encodeURIComponent(n)+"'>"+n+"</button>").join("");$("customPresets").querySelectorAll("[data-custom]").forEach(b=>b.onclick=()=>{settings={...DEFAULTS,...p[decodeURIComponent(b.dataset.custom)]};applySettingsToUI();saveSettings();newGame();closeFeatureMenu()})}
+function savePreset(){const n=$("presetName").value.trim();if(!n)return;const p=JSON.parse(localStorage.getItem("snake-presets")||"{}");p[n]={...settings};localStorage.setItem("snake-presets",JSON.stringify(p));renderPresets();toast("Preset saved")}
+function openFeatureMenu(){$("featureMenu").classList.add("show");renderStats();renderAchievements();renderPresets()}
+function closeFeatureMenu(){$("featureMenu").classList.remove("show")}
+function applyMode(){if(feature.mode==="endless"){settings.wrap=true;settings.selfCollision=false}else if(feature.mode==="challenge"){settings.obstacles=Math.max(12,settings.obstacles);settings.foodCount=Math.min(3,settings.foodCount)}else if(feature.mode==="survival"){settings.speedGrowth=Math.max(3,settings.speedGrowth)}else if(feature.mode==="timed"){settings.speed=Math.min(90,settings.speed)}}
+function featureTick(){if(feature.powerups&&Math.random()*100<feature.powerupRate/4){const p=randomOpenCell();if(p)powerups.push({...p,type:["shield","multiplier","shrink","speed"][rand(4)],life:90})}powerups.forEach(p=>p.life--);powerups=powerups.filter(p=>p.life>0)}
+function drawPowerups(){const c=cellSize(),t=THEMES[settings.theme];powerups.forEach(p=>{ctx.fillStyle=t.bonus;ctx.beginPath();ctx.arc((p.x+.5)*c,(p.y+.5)*c,c*.3,0,Math.PI*2);ctx.fill();ctx.fillStyle=t.bg;ctx.font=Math.max(8,c*.28)+"px monospace";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(p.type[0].toUpperCase(),(p.x+.5)*c,(p.y+.5)*c)})}
+function collectPowerup(p){const hit=powerups.find(x=>same(x,p));if(!hit)return;powerups=powerups.filter(x=>x!==hit);if(hit.type==="shield")powerState.shield=120;if(hit.type==="multiplier")powerState.multiplier=2;if(hit.type==="shrink")snake.length=Math.max(2,Math.ceil(snake.length/2));if(hit.type==="speed")powerState.speed=120;stats.powerups++;featureSave();toast(hit.type.toUpperCase()+" POWER-UP");if(feature.vibration)navigator.vibrate?.(30)}
 "use strict";
 (() => {
 const $=id=>document.getElementById(id);
@@ -176,7 +193,7 @@ function fillFood(){
  const target=Math.min(settings.foodCount,settings.mapSize*settings.mapSize-1);
  while(foods.length<target)spawnFood();
 }
-function newGame(){
+function newGame(){\n applyMode(); powerups=[];powerState={shield:0,multiplier:1};
  stopTimer();
  readSettings();
  startSnake();
@@ -255,15 +272,15 @@ function eatAt(p){
 function tick(){
  if(!running||paused)return;
  consumeDirection();
- const head=nextHead();
- if(hitsWall(head)||hitsSelf(head)||hitsObstacle(head)){
+ featureTick(); powerState.shield=Math.max(0,powerState.shield-1);powerState.multiplier=powerState.multiplier>1?Math.max(1,powerState.multiplier-.01):1;const head=nextHead();\n collectPowerup(head);
+ if((hitsWall(head)||hitsSelf(head)||hitsObstacle(head))&&powerState.shield<=0){
   gameOver("Game Over");
   return;
  }
  const gained=eatAt(head);
  snake.unshift(head);
  if(gained>0){
-  score+=gained;
+  score+=Math.round(gained*powerState.multiplier);stats.food++;featureSave();
   if(settings.perfectBonus&&foods.length===0)score+=settings.foodValue;
   if(settings.respawn)fillFood();
   flash=1;
@@ -287,7 +304,7 @@ function nearMissCheck(head){
   toast("Near-miss +1");
  }
 }
-function gameOver(reason){
+function gameOver(reason){\n stats.deaths++;stats.bestLength=Math.max(stats.bestLength,snake.length);stats.bestTime=Math.max(stats.bestTime,elapsed);featureSave();
  running=false;
  paused=false;
  stopTimer();
@@ -501,7 +518,7 @@ function bindSetting(id,rerun){
   if(rerun)restartTimerIfNeeded();
  });
 }
-function bindAll(){
+function bindAll(){\n $("closeFeatureMenu").onclick=closeFeatureMenu;document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>document.querySelectorAll("[data-panel]").forEach(p=>p.hidden=p.dataset.panel!==b.dataset.tab));$("savePreset").onclick=savePreset;$("fullscreen").onclick=()=>document.documentElement.requestFullscreen?.();$("clearStats").onclick=()=>{stats={games:0,deaths:0,food:0,bestLength:0,bestTime:0,powerups:0};featureSave();renderStats()};document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>{const p=b.dataset.preset;settings={...DEFAULTS};if(p==="chaos"){settings.foodCount=8;settings.obstacles=10;settings.bonusChance=40;settings.speed=60;settings.wrap=true}else if(p==="speedrun"){settings.speed=45;settings.speedGrowth=5}else if(p==="maze"){settings.obstacles=20;settings.mapSize=30}else if(p==="zen"){settings.speed=160;settings.wrap=true;settings.selfCollision=false;settings.foodCount=3}applySettingsToUI();saveSettings();newGame();closeFeatureMenu()});\n $("gameMode").onchange=e=>{feature.mode=e.target.value;featureSave()};$("powerupsEnabled").onchange=e=>{feature.powerups=e.target.checked;featureSave()};$("powerupRate").oninput=e=>{feature.powerupRate=+e.target.value;$("powerupRateVal").textContent=e.target.value+"%";featureSave()};$("soundEnabled").onchange=e=>{feature.sound=e.target.checked;featureSave()};$("vibrationEnabled").onchange=e=>{feature.vibration=e.target.checked;featureSave()};$("volume").oninput=e=>{feature.volume=+e.target.value;$("volumeVal").textContent=e.target.value+"%";featureSave()};["reducedMotion","largeUI","highContrast"].forEach(id=>$(id).onchange=e=>{feature[id]=e.target.checked;document.body.classList.toggle(id==="largeUI"?"large-ui":id==="highContrast"?"high-contrast":"reduced-motion",e.target.checked);featureSave()});
  bindRange("foodCount",false);
  bindRange("foodValue",false);
  bindRange("startLength",false);
@@ -568,7 +585,7 @@ function onKey(e){
  else if(k==="enter"&&!running){$("overlay").classList.remove("show");newGame()}
  else if(k==="r")randomize();
 }
-function safeLoad(){
+document.addEventListener("keydown",e=>{if(e.key===";"){e.preventDefault();$("featureMenu").classList.contains("show")?closeFeatureMenu():openFeatureMenu()}});\nfunction safeLoad(){\n featureLoad();
  loadSettings();
  readSettings();
 }
