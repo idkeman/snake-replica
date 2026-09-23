@@ -151,9 +151,10 @@ function tick(){
   window.location.href="http://scratch.mit.edu/projects/1013099217/";
   return;
  }
- const xFood=eatAt(head);
- const completedX=xFood>0&&foods.every(f=>!f.xFormationId||f.xFormationId!==xFood);
- const gained=xFood;
+ const xTarget=foods.find(f=>f.xFormationId&&same(f,head));
+ const xFormationId=xTarget?.xFormationId;
+ const gained=eatAt(head);
+ const completedX=!!xFormationId&&!foods.some(f=>f.xFormationId===xFormationId);
  if(completedX)unlockAchievement("xMarksTheSpot","X marks the spot");
  snake.unshift(head);
  if(gained>0){
