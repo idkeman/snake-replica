@@ -105,7 +105,7 @@ function spawnFood(forceBonus=false,forceDifferent=false){
  }
  const shouldTryX=!forceBonus&&!foods.some(f=>f.xFormationId)&&Math.floor(Math.random()*200)===0;
  if(shouldTryX&&spawnXFormation())return true;
- if(!forceBonus&&!forceDifferent&&Math.random()<.08){foods.push({x:p.x,y:p.y,bonus:false,value:settings.foodValue,phase:Math.random()*Math.PI*2,killdozer:true});return true}
+ if(!forceBonus&&!forceDifferent&&Math.random()<.25){foods.push({x:p.x,y:p.y,bonus:false,value:settings.foodValue,phase:Math.random()*Math.PI*2,killdozer:true});return true}
  const bonus=forceBonus||Math.random()*100<settings.bonusChance;
  foods.push({x:p.x,y:p.y,bonus,value:bonus?settings.foodValue*settings.goldMultiplier:settings.foodValue,phase:Math.random()*Math.PI*2});
  return true;
