@@ -22,7 +22,7 @@ let running=false,paused=false,gameStart=0,elapsed=0,timer=null,lastFrame=0;
 let inputQueue=[];
 let particles=[],flash=0,toastTimer=null,achievementTimer=null;
 
-let feature={mode:"classic",powerups:false,powerupRate:20,sound:true,music:false,vibration:true,volume:45,reducedMotion:false,largeUI:false,highContrast:false};
+let feature={mode:"classic",powerups:true,powerupRate:20,sound:true,music:false,vibration:true,volume:45,reducedMotion:false,largeUI:false,highContrast:false};
 let musicTimer=null;
 function toggleMusic(on){feature.music=on;if(!on){clearInterval(musicTimer);musicTimer=null;return}if(musicTimer)return;musicTimer=setInterval(()=>{if(feature.sound)featureTone(110+Math.random()*80,.35)},900)}
 function featureTone(freq,dur){try{const a=featureTone.ctx||(featureTone.ctx=new (window.AudioContext||window.webkitAudioContext)());const o=a.createOscillator(),g=a.createGain();o.frequency.value=freq;g.gain.value=feature.volume/1000;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+dur)}catch(e){}}
