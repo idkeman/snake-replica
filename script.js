@@ -513,6 +513,7 @@ function bindAll(){
  ["mapSize","wrap","selfCollision","grid","ghostFood","respawn","nearMiss","perfectBonus","theme","snakeStyle","foodStyle"].forEach(id=>bindSetting(id,false));
  $("start").addEventListener("click",newGame);
  $("restart").addEventListener("click",()=>{$("overlay").classList.remove("show");newGame()});
+ $("dismiss").addEventListener("click",()=>{$("overlay").classList.remove("show")});
  $("pause").addEventListener("click",togglePause);
  $("random").addEventListener("click",randomize);
  $("reset").addEventListener("click",resetSettings);
