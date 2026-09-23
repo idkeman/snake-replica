@@ -26,7 +26,8 @@ let feature={mode:"classic",powerups:false,powerupRate:20,sound:true,music:false
 let musicTimer=null;
 function toggleMusic(on){feature.music=on;if(!on){clearInterval(musicTimer);musicTimer=null;return}if(musicTimer)return;musicTimer=setInterval(()=>{if(feature.sound)featureTone(110+Math.random()*80,.35)},900)}
 function featureTone(freq,dur){try{const a=featureTone.ctx||(featureTone.ctx=new (window.AudioContext||window.webkitAudioContext)());const o=a.createOscillator(),g=a.createGain();o.frequency.value=freq;g.gain.value=feature.volume/1000;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+dur)}catch(e){}}
-let stats=JSON.parse(localStorage.getItem("snake-stats")||'{"games":0,"deaths":0,"food":0,"bestLength":0,"bestTime":0,"powerups":0}');
+let stats={games:0,deaths:0,food:0,bestLength:0,bestTime:0,powerups:0,bushCamping:false,limp:false,xMarksTheSpot:false,playDifferentGame:false};
+try{stats={...stats,...JSON.parse(localStorage.getItem("snake-stats")||"{}")}}catch(e){}
 let powerups=[];let powerState={shield:0,multiplier:1};let xFormationId=0;
 
 function featureSave(){localStorage.setItem("snake-feature",JSON.stringify(feature));localStorage.setItem("snake-stats",JSON.stringify(stats))}
@@ -183,7 +184,7 @@ function bindRange(id,rerun){$(id).addEventListener("input",()=>{readSettings();
 function bindSetting(id,rerun){$(id).addEventListener("change",()=>{readSettings();saveSettings();if(rerun)restartTimerIfNeeded()})}
 function bindAll(){
  $("closeFeatureMenu").onclick=closeFeatureMenu;document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>document.querySelectorAll("[data-panel]").forEach(p=>p.hidden=p.dataset.panel!==b.dataset.tab));$("savePreset").onclick=savePreset;$("fullscreen").onclick=()=>document.documentElement.requestFullscreen?.();$("clearStats").onclick=()=>{stats={games:0,deaths:0,food:0,bestLength:0,bestTime:0,powerups:0};featureSave();renderStats();renderAchievements()};$("resetAchievements").onclick=()=>{stats.bushCamping=false;stats.limp=false;stats.xMarksTheSpot=false;stats.playDifferentGame=false;featureSave();renderAchievements();toast("Achievements reset")};
- $("devBush").onclick=()=>devSpawnFood("bush");
+ $("closeDevMenu").onclick=toggleDevMenu;$("devBush").onclick=()=>devSpawnFood("bush");
  $("devX").onclick=()=>devSpawnFood("x");
  $("devChess").onclick=()=>devSpawnFood("chess");
  $("devClearFood").onclick=()=>{foods=foods.filter(f=>!f.bushCamping&&!f.xFormation&&!f.differentGame);draw();toast("Debug food cleared")};document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>{const p=b.dataset.preset;settings={...DEFAULTS};if(p==="chaos"){settings.foodCount=8;settings.obstacles=10;settings.bonusChance=40;settings.speed=60;settings.wrap=true}else if(p==="speedrun"){settings.speed=45;settings.speedGrowth=5}else if(p==="maze"){settings.obstacles=20;settings.mapSize=30}else if(p==="zen"){settings.speed=160;settings.wrap=true;settings.selfCollision=false;settings.foodCount=3}applySettingsToUI();saveSettings();newGame();closeFeatureMenu()});
@@ -207,6 +208,7 @@ function safeLoad(){featureLoad();loadSettings();readSettings()}
 safeLoad();
 bindAll();
 setupSecretCode();
+setupMobileControls();
 newGame();
 animateParticles();
 })();
