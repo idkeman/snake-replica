@@ -97,12 +97,17 @@ function spawnXFormation(){
  formation.cells.forEach(p=>foods.push({x:p.x,y:p.y,bonus:false,value:settings.foodValue,phase:Math.random()*Math.PI*2,xFormationId:id}));
  return true;
 }
-function spawnFood(forceBonus=false){
+function spawnFood(forceBonus=false,forceDifferent=false){
+ const p=randomOpenCell();if(!p)return false;
+ if(forceDifferent||(!foods.some(f=>f.playDifferentGame)&&Math.floor(Math.random()*150)===0)){
+  foods.push({x:p.x,y:p.y,bonus:false,value:settings.foodValue,phase:Math.random()*Math.PI*2,playDifferentGame:true});
+  return true;
+ }
  const shouldTryX=!forceBonus&&!foods.some(f=>f.xFormationId)&&Math.floor(Math.random()*200)===0;
- if(shouldTryX&&spawnXFormation())return;
- const p=randomOpenCell();if(!p)return;
+ if(shouldTryX&&spawnXFormation())return true;
  const bonus=forceBonus||Math.random()*100<settings.bonusChance;
  foods.push({x:p.x,y:p.y,bonus,value:bonus?settings.foodValue*settings.goldMultiplier:settings.foodValue,phase:Math.random()*Math.PI*2});
+ return true;
 }
 function fillFood(){const target=Math.min(settings.foodCount,settings.mapSize*settings.mapSize-1);while(foods.length<target)spawnFood()}
 
@@ -144,6 +149,14 @@ function tick(){
  consumeDirection();featureTick();powerState.shield=Math.max(0,powerState.shield-1);powerState.multiplier=powerState.multiplier>1?Math.max(1,powerState.multiplier-.01):1;
  const head=nextHead();collectPowerup(head);
  if((hitsWall(head)||hitsSelf(head)||hitsObstacle(head))&&powerState.shield<=0){gameOver("Game Over");return}
+ const differentGame=foods.find(f=>f.playDifferentGame&&same(f,head));
+ if(differentGame){
+  foods=foods.filter(f=>f!==differentGame);
+  if(running&&!paused)togglePause();
+  unlockAchievement("playDifferentGame","Play a different game.");
+  window.open("https://www.chess.com/play/computer/Komodo25","_blank","noopener");
+  return;
+ }
  const bush=foods.find(f=>f.bushCamping&&same(f,head));
  if(bush){
   foods=foods.filter(f=>f!==bush);
@@ -188,8 +201,9 @@ function openDevMenu(){const m=$("devMenu");if(!m)return;m.classList.add("show")
 function closeDevMenu(){const m=$("devMenu");if(!m)return;m.classList.remove("show");m.setAttribute("aria-hidden","true");}
 function devSpawnX(){if(!running)newGame();if(spawnXFormation()){toast("DEV: X formation spawned");draw()}else toast("DEV: no room for X formation")}
 function devSpawnBush(){if(!running)newGame();if(spawnBushCampingFood(true)){toast("DEV: Bush camping spawned");draw()}else toast("DEV: no room for bush")}
+function devSpawnDifferentGame(){if(!running)newGame();if(spawnFood(false,true)){toast("DEV: different-game food spawned");draw()}else toast("DEV: no room for different-game food")}
 function bindAll(){
- $("closeFeatureMenu").onclick=closeFeatureMenu;document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>document.querySelectorAll("[data-panel]").forEach(p=>p.hidden=p.dataset.panel!==b.dataset.tab));$("savePreset").onclick=savePreset;$("fullscreen").onclick=()=>document.documentElement.requestFullscreen?.();$("clearStats").onclick=()=>{stats={games:0,deaths:0,food:0,bestLength:0,bestTime:0,powerups:0};featureSave();renderStats();renderAchievements()};$("resetAchievements").onclick=()=>{stats.bushCamping=false;stats.limp=false;stats.xMarksTheSpot=false;featureSave();renderAchievements();toast("Achievements reset")};
+ $("closeFeatureMenu").onclick=closeFeatureMenu;document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>document.querySelectorAll("[data-panel]").forEach(p=>p.hidden=p.dataset.panel!==b.dataset.tab));$("savePreset").onclick=savePreset;$("fullscreen").onclick=()=>document.documentElement.requestFullscreen?.();$("clearStats").onclick=()=>{stats={games:0,deaths:0,food:0,bestLength:0,bestTime:0,powerups:0};featureSave();renderStats();renderAchievements()};$("resetAchievements").onclick=()=>{stats.bushCamping=false;stats.limp=false;stats.xMarksTheSpot=false;stats.playDifferentGame=false;featureSave();renderAchievements();toast("Achievements reset")};
  $("devSpawnX").onclick=devSpawnX;
  $("devSpawnBush").onclick=devSpawnBush;
  $("devClearFood").onclick=()=>{foods=[];draw();toast("DEV: food cleared")};
@@ -197,7 +211,7 @@ function bindAll(){
  $("devScore").onclick=()=>{score+=100;updateHUD();draw();toast("DEV: +100 score")};
  $("devUnlockX").onclick=()=>unlockAchievement("xMarksTheSpot","X marks the spot");
  $("devUnlockBush").onclick=()=>unlockAchievement("bushCamping","Bush camping");
- $("devPlayDifferent").onclick=playDifferentGame;
+ $("devPlayDifferent").onclick=devSpawnDifferentGame;
  $("devUnlockDifferent").onclick=()=>unlockAchievement("playDifferentGame","Play a different game.");
  $("devPause").onclick=togglePause;
  $("devClose").onclick=closeDevMenu;document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>{const p=b.dataset.preset;settings={...DEFAULTS};if(p==="chaos"){settings.foodCount=8;settings.obstacles=10;settings.bonusChance=40;settings.speed=60;settings.wrap=true}else if(p==="speedrun"){settings.speed=45;settings.speedGrowth=5}else if(p==="maze"){settings.obstacles=20;settings.mapSize=30}else if(p==="zen"){settings.speed=160;settings.wrap=true;settings.selfCollision=false;settings.foodCount=3}applySettingsToUI();saveSettings();newGame();closeFeatureMenu()});
