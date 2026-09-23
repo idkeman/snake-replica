@@ -102,7 +102,28 @@ function hitsSelf(p){if(!settings.selfCollision)return false;const eating=foods.
 function hitsObstacle(p){return obstacles.some(o=>same(o,p))}
 function eatAt(p){const eaten=foods.filter(f=>same(f,p));if(!eaten.length)return 0;let gained=0;eaten.forEach(f=>{gained+=f.value;burst(f.x,f.y,f.bonus?12:7,f.bonus)});const completed=eaten.some(f=>f.xFormation&& !foods.some(other=>other.xFormation===f.xFormation&&!same(other,p)));const differentGame=eaten.some(f=>f.differentGame);foods=foods.filter(f=>!same(f,p));if(completed)unlockAchievement("xMarksTheSpot","X marks the spot");if(differentGame)triggerDifferentGame();return gained}
 
-function triggerDifferentGame(){\n stopTimer();\n paused=true;\n unlockAchievement("playDifferentGame","Play a different game");\n const tab=window.open("https://www.chess.com/play/computer/Komodo25","_blank","noopener,noreferrer");\n if(!tab)toast("Pop-up blocked — open Chess.com manually");\n}\n\nfunction spawnBushCampingFood(){
+function triggerDifferentGame(){\n stopTimer();\n paused=true;\n unlockAchievement("playDifferentGame","Play a different game");\n const tab=window.open("https://www.chess.com/play/computer/Komodo25","_blank","noopener,noreferrer");\n if(!tab)toast("Pop-up blocked — open Chess.com manually");\n}\n\nfunction devSpawnFood(type){
+ const p=randomOpenCell();
+ if(!p){toast("No open cell available");return}
+ if(type==="bush"){
+  foods.push({x:p.x,y:p.y,bushCamping:true,bonus:false,value:0,phase:0,pointNumber:1});
+  toast("Bush camping food spawned");
+ }else if(type==="chess"){
+  foods.push({x:p.x,y:p.y,bonus:false,value:0,phase:0,differentGame:true});
+  toast("Chess food spawned");
+ }else if(type==="x"){
+  const original=Math.random;
+  const success=spawnXFormation();
+  if(success)toast("X formation spawned");
+  else toast("No room for an X formation");
+  void original;
+ }
+}
+function toggleDevMenu(){
+ const menu=$("devMenu");
+ if(menu)menu.classList.toggle("show");
+}
+function spawnBushCampingFood(){
  if(stats.bushCamping)return null;
  const candidates=[];
  for(let x=0;x<settings.mapSize;x++){
@@ -161,7 +182,11 @@ function toast(text){const el=$("toast");el.textContent=text;el.classList.add("s
 function bindRange(id,rerun){$(id).addEventListener("input",()=>{readSettings();saveSettings();if(rerun)restartTimerIfNeeded()})}
 function bindSetting(id,rerun){$(id).addEventListener("change",()=>{readSettings();saveSettings();if(rerun)restartTimerIfNeeded()})}
 function bindAll(){
- $("closeFeatureMenu").onclick=closeFeatureMenu;document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>document.querySelectorAll("[data-panel]").forEach(p=>p.hidden=p.dataset.panel!==b.dataset.tab));$("savePreset").onclick=savePreset;$("fullscreen").onclick=()=>document.documentElement.requestFullscreen?.();$("clearStats").onclick=()=>{stats={games:0,deaths:0,food:0,bestLength:0,bestTime:0,powerups:0};featureSave();renderStats();renderAchievements()};$("resetAchievements").onclick=()=>{stats.bushCamping=false;stats.limp=false;stats.xMarksTheSpot=false;stats.playDifferentGame=false;featureSave();renderAchievements();toast("Achievements reset")};document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>{const p=b.dataset.preset;settings={...DEFAULTS};if(p==="chaos"){settings.foodCount=8;settings.obstacles=10;settings.bonusChance=40;settings.speed=60;settings.wrap=true}else if(p==="speedrun"){settings.speed=45;settings.speedGrowth=5}else if(p==="maze"){settings.obstacles=20;settings.mapSize=30}else if(p==="zen"){settings.speed=160;settings.wrap=true;settings.selfCollision=false;settings.foodCount=3}applySettingsToUI();saveSettings();newGame();closeFeatureMenu()});
+ $("closeFeatureMenu").onclick=closeFeatureMenu;document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>document.querySelectorAll("[data-panel]").forEach(p=>p.hidden=p.dataset.panel!==b.dataset.tab));$("savePreset").onclick=savePreset;$("fullscreen").onclick=()=>document.documentElement.requestFullscreen?.();$("clearStats").onclick=()=>{stats={games:0,deaths:0,food:0,bestLength:0,bestTime:0,powerups:0};featureSave();renderStats();renderAchievements()};$("resetAchievements").onclick=()=>{stats.bushCamping=false;stats.limp=false;stats.xMarksTheSpot=false;stats.playDifferentGame=false;featureSave();renderAchievements();toast("Achievements reset")};
+ $("devBush").onclick=()=>devSpawnFood("bush");
+ $("devX").onclick=()=>devSpawnFood("x");
+ $("devChess").onclick=()=>devSpawnFood("chess");
+ $("devClearFood").onclick=()=>{foods=foods.filter(f=>!f.bushCamping&&!f.xFormation&&!f.differentGame);draw();toast("Debug food cleared")};document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>{const p=b.dataset.preset;settings={...DEFAULTS};if(p==="chaos"){settings.foodCount=8;settings.obstacles=10;settings.bonusChance=40;settings.speed=60;settings.wrap=true}else if(p==="speedrun"){settings.speed=45;settings.speedGrowth=5}else if(p==="maze"){settings.obstacles=20;settings.mapSize=30}else if(p==="zen"){settings.speed=160;settings.wrap=true;settings.selfCollision=false;settings.foodCount=3}applySettingsToUI();saveSettings();newGame();closeFeatureMenu()});
  $("gameMode").onchange=e=>{feature.mode=e.target.value;featureSave()};$("powerupsEnabled").onchange=e=>{feature.powerups=e.target.checked;featureSave()};$("powerupRate").oninput=e=>{feature.powerupRate=+e.target.value;$("powerupRateVal").textContent=e.target.value+"%";featureSave()};$("soundEnabled").onchange=e=>{feature.sound=e.target.checked;featureSave()};$("musicEnabled").onchange=e=>{toggleMusic(e.target.checked);featureSave()};$("vibrationEnabled").onchange=e=>{feature.vibration=e.target.checked;featureSave()};$("volume").oninput=e=>{feature.volume=+e.target.value;$("volumeVal").textContent=e.target.value+"%";featureSave()};["reducedMotion","largeUI","highContrast"].forEach(id=>$(id).onchange=e=>{feature[id]=e.target.checked;document.body.classList.toggle(id==="largeUI"?"large-ui":id==="highContrast"?"high-contrast":"reduced-motion",e.target.checked);featureSave()});
  bindRange("foodCount",false);bindRange("foodValue",false);bindRange("startLength",false);bindRange("speed",true);bindRange("speedGrowth",true);bindRange("obstacles",false);bindRange("bonusChance",false);bindRange("goldMultiplier",false);
  ["mapSize","wrap","selfCollision","grid","ghostFood","respawn","nearMiss","perfectBonus","theme","snakeStyle","foodStyle"].forEach(id=>bindSetting(id,false));
@@ -170,7 +195,10 @@ function bindAll(){
 function isMobileDevice(){return window.matchMedia("(pointer: coarse)").matches||/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)}
 function setupMobileControls(){if(!isMobileDevice())return;document.body.classList.add("mobile-device");const pad=document.createElement("div");pad.id="mobileControls";pad.setAttribute("aria-label","Mobile snake controls");pad.innerHTML='<button data-dir="up" aria-label="Up">▲</button><div><button data-dir="left" aria-label="Left">◀</button><button data-dir="down" aria-label="Down">▼</button><button data-dir="right" aria-label="Right">▶</button></div>';document.body.appendChild(pad);const directions={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};pad.querySelectorAll("button").forEach(button=>{const press=e=>{e.preventDefault();const d=directions[button.dataset.dir];queueDirection(d[0],d[1])};button.addEventListener("pointerdown",press,{passive:false});button.addEventListener("touchstart",press,{passive:false})});let startX=0,startY=0;canvas.addEventListener("touchstart",e=>{if(e.touches.length!==1)return;startX=e.touches[0].clientX;startY=e.touches[0].clientY;e.preventDefault()},{passive:false});canvas.addEventListener("touchend",e=>{if(!startX&&!startY)return;const dx=e.changedTouches[0].clientX-startX,dy=e.changedTouches[0].clientY-startY;startX=startY=0;if(Math.max(Math.abs(dx),Math.abs(dy))<24)return;if(Math.abs(dx)>Math.abs(dy))queueDirection(dx>0?1:-1,0);else queueDirection(0,dy>0?1:-1);e.preventDefault()},{passive:false})}
 function onKey(e){if(e.target&&e.target.matches&&e.target.matches("input,select,textarea"))return;const k=e.key.toLowerCase();if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k))e.preventDefault();if(k==="arrowup"||k==="w")queueDirection(0,-1);else if(k==="arrowdown"||k==="s")queueDirection(0,1);else if(k==="arrowleft"||k==="a")queueDirection(-1,0);else if(k==="arrowright"||k==="d")queueDirection(1,0);else if(k===" ")togglePause();else if(k==="enter"&&!running){$("overlay").classList.remove("show");newGame()}else if(k==="r")randomize()}
-document.addEventListener("keydown",e=>{if(e.key===";"){e.preventDefault();$("featureMenu").classList.contains("show")?closeFeatureMenu():openFeatureMenu()}});
+document.addEventListener("keydown",e=>{
+ if(e.key===";"){e.preventDefault();$("featureMenu").classList.contains("show")?closeFeatureMenu():openFeatureMenu()}
+ if(e.ctrlKey&&e.key==="["){e.preventDefault();toggleDevMenu()}
+});
 
 function triggerLimp(){if(running)stopTimer();running=false;paused=false;unlockAchievement("limp","Limp");const overlay=$("overlay");if(overlay)overlay.classList.remove("show");const limp=$("limpOverlay");if(limp){limp.classList.add("show");limp.setAttribute("aria-hidden","false")}}
 function setupSecretCode(){const input=$("codeInput"),limp=$("limpOverlay"),restart=$("limpRestart");if(!input||!limp||!restart)return;input.addEventListener("keydown",e=>{if(e.key!=="Enter")return;e.preventDefault();if(input.value.trim().toLowerCase()==="limp")triggerLimp();input.value=""});restart.addEventListener("click",()=>{limp.classList.remove("show");limp.setAttribute("aria-hidden","true");newGame()})}
