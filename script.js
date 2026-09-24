@@ -24,7 +24,7 @@ let ventState={vents:[],hunter:null,phase:"hidden",timer:null,chaseEnds:0,return
 let cursedState={active:false,armedAt:0,rollTimer:null,wall:null,wallTimer:null};
 const CURSE_START_IMAGE="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTtv5NwyApO1iC7BHsEwGBarCqFxxzDDn6q1NCG3R5TmQ&s=10";
 const CURSE_HIT_IMAGE="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRyJeVsxtliu2LWvPIHZTVfMACrnYLMKd9UJdDy8ULpNQ&s=10";
-const VENT_HUNTER_HIT_IMAGE="https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=1146303350952319";
+const VENT_HUNTER_HIT_IMAGE="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQSuEpb34lPH5j1hMeYvm3iPASUwFjNPMfuYUIMScrrYQ&s=10";
 let inputQueue=[];
 let particles=[],flash=0,toastTimer=null,achievementTimer=null;
 
