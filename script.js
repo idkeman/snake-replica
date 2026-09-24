@@ -149,7 +149,7 @@ function fillFood(){const target=Math.min(settings.foodCount,settings.mapSize*se
 function newGame(){
  clearDozerTimers();dozerState.phase="idle";$("dozerWarning")?.classList.remove("show");if(cursedState.active){clearTimeout(cursedState.rollTimer);clearTimeout(cursedState.wallTimer);cursedState.wallTimer=null;cursedState.wall=null;$("curseWall")?.classList.remove("show");cursedState.rollTimer=setTimeout(()=>{if(cursedState.active&&running)scheduleCurseRoll(0)},Math.max(0,cursedState.armedAt-performance.now()))}
  applyMode();clearVentState();powerups=[];powerState={shield:0,multiplier:1,killdozerUntil:0};
- stopTimer();readSettings();startSnake();buildObstacles();if(settings.ventHunter&&stats.itsAYes)buildVents();foods=[];nextXFormationId=1;fillFood();spawnBushCampingFood();score=0;elapsed=0;particles=[];flash=0;inputQueue=[];running=true;paused=false;gameStart=performance.now();stats.games++;featureSave();updateHUD();draw();startTimer();scheduleDozerWarning();
+ stopTimer();readSettings();startSnake();buildObstacles();foods=[];if(settings.ventHunter&&stats.itsAYes)buildVents();nextXFormationId=1;fillFood();spawnBushCampingFood();score=0;elapsed=0;particles=[];flash=0;inputQueue=[];running=true;paused=false;gameStart=performance.now();stats.games++;featureSave();updateHUD();draw();startTimer();scheduleDozerWarning();
 }
 function startTimer(){stopTimer();timer=setInterval(tick,getTickRate())}
 function stopTimer(){if(timer){clearInterval(timer);timer=null}}
