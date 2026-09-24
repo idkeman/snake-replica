@@ -4,7 +4,7 @@ const $=id=>document.getElementById(id);
 const canvas=$("game");
 const ctx=canvas.getContext("2d");
 const DEFAULTS={
- mapSize:20,foodCount:1,foodValue:1,startLength:3,speed:100,speedGrowth:0,
+ mapSize:20,foodCount:3,foodValue:1,startLength:3,speed:100,speedGrowth:0,
  wrap:false,selfCollision:true,grid:false,ghostFood:false,respawn:true,obstacles:0,
  bonusChance:0,goldMultiplier:3,nearMiss:false,perfectBonus:false,theme:"mono",
  snakeStyle:"block",foodStyle:"block",graceDozer:true,ventHunter:false,curse:false
