@@ -20,7 +20,7 @@ let snake=[],foods=[],obstacles=[],direction={x:1,y:0},queued={x:1,y:0};
 let score=0,best=Number(localStorage.getItem("snake-best")||0);
 let running=false,paused=false,gameStart=0,elapsed=0,timer=null,lastFrame=0;
 let dozerState={phase:"idle",warningEnds:0,warningTimer:null,attackTimer:null,resumeTimer:null};
-let cursedState={active:false,armedAt:0,rollTimer:null,wall:null};
+let cursedState={active:false,armedAt:0,rollTimer:null,wall:null,wallTimer:null};
 const CURSE_START_IMAGE="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTtv5NwyApO1iC7BHsEwGBarCqFxxzDDn6q1NCG3R5TmQ&s=10";
 const CURSE_HIT_IMAGE="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRyJeVsxtliu2LWvPIHZTVfMACrnYLMKd9UJdDy8ULpNQ&s=10";
 let inputQueue=[];
@@ -84,12 +84,12 @@ function loadSettings(){try{const saved=JSON.parse(localStorage.getItem("snake-s
 function applySettingsToUI(){$("mapSize").value=settings.mapSize;$("foodCount").value=settings.foodCount;$("foodValue").value=settings.foodValue;$("startLength").value=settings.startLength;$("speed").value=settings.speed;$("speedGrowth").value=settings.speedGrowth;$("wrap").checked=settings.wrap;$("selfCollision").checked=settings.selfCollision;$("grid").checked=settings.grid;$("ghostFood").checked=settings.ghostFood;$("respawn").checked=settings.respawn;$("obstacles").value=settings.obstacles;$("bonusChance").value=settings.bonusChance;$("goldMultiplier").value=settings.goldMultiplier;$("nearMiss").checked=settings.nearMiss;$("perfectBonus").checked=settings.perfectBonus;$("theme").value=settings.theme;$("snakeStyle").value=settings.snakeStyle;$("foodStyle").value=settings.foodStyle;$("graceDozer").checked=settings.graceDozer;updateLabels()}
 function resizeCanvas(){const side=settings.mapSize;canvas.width=side*30;canvas.height=side*30}
 function flashImage(url){const el=$("curseFlash");if(!el)return;el.src=url;el.classList.remove("show");void el.offsetWidth;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),100)}
-function clearCurse(){clearTimeout(cursedState.rollTimer);cursedState.rollTimer=null;cursedState.active=false;cursedState.wall=null;$("curseWall")?.classList.remove("show")}
+function clearCurse(){clearTimeout(cursedState.rollTimer);clearTimeout(cursedState.wallTimer);cursedState.rollTimer=null;cursedState.wallTimer=null;cursedState.active=false;cursedState.wall=null;$("curseWall")?.classList.remove("show")}
 function scheduleCurseRoll(delay=5000){clearTimeout(cursedState.rollTimer);if(!cursedState.active||!running)return;cursedState.rollTimer=setTimeout(()=>{if(!cursedState.active||!running)return;if(Math.random()<.5)spawnCurseWall();else scheduleCurseRoll(5000)},delay)}
 function spawnCurseWall(){if(!running||!cursedState.active)return;clearTimeout(cursedState.rollTimer);const head=snake[0],cells=[];let p={x:head.x,y:head.y};for(let i=0;i<settings.mapSize;i++){p={x:p.x+direction.x,y:p.y+direction.y};if(settings.wrap){p.x=(p.x+settings.mapSize)%settings.mapSize;p.y=(p.y+settings.mapSize)%settings.mapSize}else if(p.x<0||p.x>=settings.mapSize||p.y<0||p.y>=settings.mapSize)break;if(!cells.some(x=>same(x,p)))cells.push(p)}if(!cells.length){scheduleCurseRoll();return}cursedState.wall=cells[rand(cells.length)];$("curseWall").classList.add("show");draw();clearTimeout(cursedState.rollTimer);cursedState.rollTimer=setTimeout(()=>{if(cursedState.active&&running&&cursedState.wall)dismissCurseWall()},5000)}
-function dismissCurseWall(){if(!cursedState.active||!cursedState.wall)return;cursedState.wall=null;$("curseWall").classList.remove("show");scheduleCurseRoll(5000);draw()}
+function dismissCurseWall(){if(!cursedState.active||!cursedState.wall)return;clearTimeout(cursedState.wallTimer);cursedState.wallTimer=null;cursedState.wall=null;$("curseWall").classList.remove("show");scheduleCurseRoll(5000);draw()}
 function startCurse(){clearCurse();cursedState.active=true;cursedState.armedAt=performance.now()+10000;cursedState.rollTimer=setTimeout(()=>{if(cursedState.active&&running)scheduleCurseRoll(0)},10000)}
-function checkCurseCollision(p){if(!cursedState.active||!cursedState.wall||!same(p,cursedState.wall))return false;flashImage(CURSE_HIT_IMAGE);cursedState.wall=null;$("curseWall").classList.remove("show");gameOver("You found it.");return true}
+function checkCurseCollision(p){if(!cursedState.active||!cursedState.wall||!same(p,cursedState.wall))return false;flashImage(CURSE_HIT_IMAGE);clearTimeout(cursedState.wallTimer);cursedState.wallTimer=null;cursedState.wall=null;$("curseWall").classList.remove("show");gameOver("You found it.");return true}
 function clearDozerTimers(){clearTimeout(dozerState.warningTimer);clearInterval(dozerState.attackTimer);clearTimeout(dozerState.resumeTimer);dozerState.warningTimer=null;dozerState.attackTimer=null;dozerState.resumeTimer=null}
 function updateDozerDisplay(){const el=$("dozerWarning");if(!el)return;if(dozerState.phase!=="warning"){el.classList.remove("show");return}const left=Math.max(0,(dozerState.warningEnds-performance.now())/1000);$("dozerCountdown").textContent=Math.ceil(left);el.classList.add("show")}
 function scheduleDozerWarning(){clearTimeout(dozerState.warningTimer);if(!settings.graceDozer||!running)return;dozerState.phase="idle";dozerState.warningTimer=setTimeout(beginDozerWarning,5000+Math.random()*10000)}
@@ -135,7 +135,7 @@ function spawnFood(forceBonus=false,forceDifferent=false){
 function fillFood(){const target=Math.min(settings.foodCount,settings.mapSize*settings.mapSize-1);while(foods.length<target)spawnFood()}
 
 function newGame(){
- clearDozerTimers();dozerState.phase="idle";$("dozerWarning")?.classList.remove("show");if(cursedState.active){clearTimeout(cursedState.rollTimer);cursedState.wall=null;$("curseWall")?.classList.remove("show");cursedState.rollTimer=setTimeout(()=>{if(cursedState.active&&running)scheduleCurseRoll(0)},Math.max(0,cursedState.armedAt-performance.now()))}
+ clearDozerTimers();dozerState.phase="idle";$("dozerWarning")?.classList.remove("show");if(cursedState.active){clearTimeout(cursedState.rollTimer);clearTimeout(cursedState.wallTimer);cursedState.wallTimer=null;cursedState.wall=null;$("curseWall")?.classList.remove("show");cursedState.rollTimer=setTimeout(()=>{if(cursedState.active&&running)scheduleCurseRoll(0)},Math.max(0,cursedState.armedAt-performance.now()))}
  applyMode();powerups=[];powerState={shield:0,multiplier:1,killdozerUntil:0};
  stopTimer();readSettings();startSnake();buildObstacles();foods=[];nextXFormationId=1;fillFood();spawnBushCampingFood();score=0;elapsed=0;particles=[];flash=0;inputQueue=[];running=true;paused=false;gameStart=performance.now();stats.games++;featureSave();updateHUD();draw();startTimer();scheduleDozerWarning();
 }
