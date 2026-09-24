@@ -32,8 +32,8 @@ let feature={mode:"classic",powerups:false,powerupRate:20,sound:true,music:false
 let musicTimer=null;
 function toggleMusic(on){feature.music=on;if(!on){clearInterval(musicTimer);musicTimer=null;return}if(musicTimer)return;musicTimer=setInterval(()=>{if(feature.sound)featureTone(110+Math.random()*80,.35)},900)}
 function featureTone(freq,dur){try{const a=featureTone.ctx||(featureTone.ctx=new (window.AudioContext||window.webkitAudioContext)());const o=a.createOscillator(),g=a.createGain();o.frequency.value=freq;g.gain.value=feature.volume/1000;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+dur)}catch(e){}}
-let stats=JSON.parse(localStorage.getItem("snake-stats")||'{"games":0,"deaths":0,"food":0,"bestLength":0,"bestTime":0,"powerups":0}');
-let powerups=[];let powerState={shield:0,multiplier:1,killdozerUntil:0};
+let stats={games:0,deaths:0,food:0,bestLength:0,bestTime:0,powerups:0,bushCamping:false,limp:false,xMarksTheSpot:false,playDifferentGame:false,killdozer:false,unwantedAchievement:false,itsAYes:false};
+let powerups=[];let powerState={shield:0,multiplier:1,killdozerUntil:0,speedUntil:0};
 let nextXFormationId=1;
 
 function featureSave(){localStorage.setItem("snake-feature",JSON.stringify(feature));localStorage.setItem("snake-stats",JSON.stringify(stats))}
@@ -43,14 +43,14 @@ function renderStats(){$("statsGrid").innerHTML=Object.entries({Games:stats.game
 function showAchievement(name){const el=$("achievementNotification"),label=$("achievementName");if(!el||!label)return;label.textContent=name;el.classList.remove("show");el.classList.toggle("glitch",name==="The achievement you shouldn't have gotten.");void el.offsetWidth;el.classList.add("show");clearTimeout(achievementTimer);achievementTimer=setTimeout(()=>{el.classList.remove("show");el.classList.remove("glitch")},3000)}
 function unlockAchievement(key,name){if(stats[key])return false;stats[key]=true;featureSave();renderAchievements();showAchievement(name);return true}
 function renderAchievements(){const a=[["Bush camping",!!stats.bushCamping],["Limp",!!stats.limp],["X marks the spot",!!stats.xMarksTheSpot],["Play a different game.",!!stats.playDifferentGame],["Killdozer",!!stats.killdozer],["The achievement you shouldn't have gotten.",!!stats.unwantedAchievement],["It's a yes.",!!stats.itsAYes],["First Bite",stats.food>0],["Century",best>=100],["Long Snake",stats.bestLength>=20],["Dedicated",stats.games>=10],["Survivor",stats.bestTime>=120],["Powered Up",stats.powerups>0]];$("achievements").innerHTML=a.map(x=>"<span class='"+(x[1]?"unlocked":"")+"'>"+(x[1]?"★ ":"☆ ")+x[0]+"</span>").join("")}
-function renderPresets(){const p=JSON.parse(localStorage.getItem("snake-presets")||"{}");$("customPresets").innerHTML=Object.keys(p).map(n=>"<button data-custom='"+encodeURIComponent(n)+"'>"+n+"</button>").join("");$("customPresets").querySelectorAll("[data-custom]").forEach(b=>b.onclick=()=>{settings={...DEFAULTS,...p[decodeURIComponent(b.dataset.custom)]};applySettingsToUI();saveSettings();newGame();closeFeatureMenu()})}
-function savePreset(){const n=$("presetName").value.trim();if(!n)return;const p=JSON.parse(localStorage.getItem("snake-presets")||"{}");p[n]={...settings};localStorage.setItem("snake-presets",JSON.stringify(p));renderPresets();toast("Preset saved")}
+function renderPresets(){let p={};try{p=JSON.parse(localStorage.getItem("snake-presets")||"{}")}catch(e){}$("customPresets").innerHTML=Object.keys(p).map(n=>"<button data-custom='"+encodeURIComponent(n)+"'>"+n+"</button>").join("");$("customPresets").querySelectorAll("[data-custom]").forEach(b=>b.onclick=()=>{settings={...DEFAULTS,...p[decodeURIComponent(b.dataset.custom)]};applySettingsToUI();saveSettings();newGame();closeFeatureMenu()})}
+function savePreset(){const n=$("presetName").value.trim();if(!n)return;let p={};try{p=JSON.parse(localStorage.getItem("snake-presets")||"{}")}catch(e){}p[n]={...settings};localStorage.setItem("snake-presets",JSON.stringify(p));renderPresets();toast("Preset saved")}
 function openFeatureMenu(){$("featureMenu").classList.add("show");renderStats();renderAchievements();renderPresets()}
 function closeFeatureMenu(){$("featureMenu").classList.remove("show")}
 function applyMode(){if(feature.mode==="endless"){settings.wrap=true;settings.selfCollision=false}else if(feature.mode==="challenge"){settings.obstacles=Math.max(12,settings.obstacles);settings.foodCount=Math.min(3,settings.foodCount)}else if(feature.mode==="survival"){settings.speedGrowth=Math.max(3,settings.speedGrowth)}else if(feature.mode==="timed"){settings.speed=Math.min(90,settings.speed)}}
 function featureTick(){if(powerState.killdozerUntil&&performance.now()>=powerState.killdozerUntil){powerState.killdozerUntil=0;toast("KILLDOZER OVER");restartTimerIfNeeded()}if(feature.powerups&&Math.random()*100<feature.powerupRate/4){const p=randomOpenCell();if(p)powerups.push({...p,type:["shield","multiplier","shrink","speed"][rand(4)],life:90})}powerups.forEach(p=>p.life--);powerups=powerups.filter(p=>p.life>0)}
 function drawPowerups(){const c=cellSize(),t=THEMES[settings.theme];powerups.forEach(p=>{ctx.fillStyle=t.bonus;ctx.beginPath();ctx.arc((p.x+.5)*c,(p.y+.5)*c,c*.3,0,Math.PI*2);ctx.fill();ctx.fillStyle=t.bg;ctx.font=Math.max(8,c*.28)+"px monospace";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(p.type[0].toUpperCase(),(p.x+.5)*c,(p.y+.5)*c)})}
-function collectPowerup(p){const hit=powerups.find(x=>same(x,p));if(!hit)return;powerups=powerups.filter(x=>x!==hit);if(hit.type==="shield")powerState.shield=120;if(hit.type==="multiplier")powerState.multiplier=2;if(hit.type==="shrink")snake.length=Math.max(2,Math.ceil(snake.length/2));if(hit.type==="speed")powerState.speed=120;stats.powerups++;featureSave();toast(hit.type.toUpperCase()+" POWER-UP");if(feature.vibration)navigator.vibrate?.(30)}
+function collectPowerup(p){const hit=powerups.find(x=>same(x,p));if(!hit)return;powerups=powerups.filter(x=>x!==hit);if(hit.type==="shield")powerState.shield=120;if(hit.type==="multiplier")powerState.multiplier=2;if(hit.type==="shrink")snake.length=Math.max(2,Math.ceil(snake.length/2));if(hit.type==="speed")powerState.speedUntil=performance.now()+5000;stats.powerups++;featureSave();toast(hit.type.toUpperCase()+" POWER-UP");if(feature.vibration)navigator.vibrate?.(30)}
 
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
 function rand(n){return Math.floor(Math.random()*n)}
@@ -99,20 +99,7 @@ function buildVents(){ventState.vents=[];const wanted=ventCount();let attempts=0
 function manhattan(a,b){return Math.abs(a.x-b.x)+Math.abs(a.y-b.y)}
 function nearestVent(p){return ventState.vents.reduce((best,v)=>!best||manhattan(p,v)<manhattan(p,best)?v:best,null)}
 function hunterDistance(a,b){if(settings.wrap){const dx=Math.min(Math.abs(a.x-b.x),settings.mapSize-Math.abs(a.x-b.x));const dy=Math.min(Math.abs(a.y-b.y),settings.mapSize-Math.abs(a.y-b.y));return dx+dy}return manhattan(a,b)}
-function stepHunter(from,to){
- const candidates=[];
- const dirs=[{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
- for(const d of dirs){
-  let p={x:from.x+d.x,y:from.y+d.y};
-  if(settings.wrap){p.x=(p.x+settings.mapSize)%settings.mapSize;p.y=(p.y+settings.mapSize)%settings.mapSize}
-  if(p.x<0||p.x>=settings.mapSize||p.y<0||p.y>=settings.mapSize)continue;
-  if(obstacles.some(o=>same(o,p)))continue;
-  candidates.push(p)
- }
- if(!candidates.length)return from;
- candidates.sort((a,b)=>hunterDistance(a,to)-hunterDistance(b,to));
- return candidates[0]
-}
+function stepHunter(from,to){const path=bfsPath(from,to);return path.length?path[0]:from}
 function bfsPath(start,goal){const q=[start],came=new Map([[key(start),null]]),dirs=[{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];while(q.length){const p=q.shift();if(same(p,goal))break;for(const d of dirs){let n={x:p.x+d.x,y:p.y+d.y};if(settings.wrap){n.x=(n.x+settings.mapSize)%settings.mapSize;n.y=(n.y+settings.mapSize)%settings.mapSize}else if(n.x<0||n.x>=settings.mapSize||n.y<0||n.y>=settings.mapSize)continue;const k=key(n);if(came.has(k)||obstacles.some(o=>same(o,n)))continue;came.set(k,p);q.push(n)}}if(!came.has(key(goal)))return [];const path=[];let cur=goal;while(cur){path.unshift(cur);cur=came.get(key(cur))}return path.slice(1)}
 function spawnVentHunter(){if(!settings.ventHunter||!running||ventState.phase!=="hidden"||!ventState.vents.length)return;const vent=nearestVent(snake[0]);if(!vent)return;ventState.hunter={x:vent.x,y:vent.y};ventState.phase="chase";ventState.chaseEnds=performance.now()+5000;toast("SHE'S OUT")}
 function ventHunterTick(){if(!settings.ventHunter||!running)return;if(ventState.phase==="hidden"){if(!ventState.timer)ventState.timer=setTimeout(()=>{ventState.timer=null;spawnVentHunter()},3000);return}if(ventState.phase==="chase"){if(performance.now()>=ventState.chaseEnds){const target=nearestVent(ventState.hunter);ventState.returnPath=target?bfsPath(ventState.hunter,target):[];ventState.returnIndex=0;ventState.phase="return";return}ventState.hunter=stepHunter(ventState.hunter,snake[0]);if(same(ventState.hunter,snake[0])){flashImage(VENT_HUNTER_HIT_IMAGE);gameOver("SHE GOT YOU");return}}else if(ventState.phase==="return"){if(ventState.returnIndex<ventState.returnPath.length)ventState.hunter=ventState.returnPath[ventState.returnIndex++];else{ventState.hunter=null;ventState.phase="hidden";ventState.timer=setTimeout(()=>{ventState.timer=null;spawnVentHunter()},3000)}}}
@@ -125,7 +112,7 @@ function addDozerWall(){const candidates=[];for(let x=0;x<settings.mapSize;x++)f
 function startDozerAttack(){clearInterval(dozerState.attackTimer);let elapsedAttack=0;toast("DOZER INCOMING");dozerState.attackTimer=setInterval(()=>{if(!running){clearInterval(dozerState.attackTimer);return}if(paused)return;elapsedAttack+=250;for(let i=0;i<3;i++)addDozerWall();const head=snake[0];const adjacent=[{x:head.x+1,y:head.y},{x:head.x-1,y:head.y},{x:head.x,y:head.y+1},{x:head.x,y:head.y-1}].filter(p=>p.x>=0&&p.x<settings.mapSize&&p.y>=0&&p.y<settings.mapSize&&!obstacles.some(o=>same(o,p))&&!snake.some(s=>same(s,p)));if(elapsedAttack>=5000&&adjacent.length)obstacles.push(adjacent[rand(adjacent.length)]);draw();if(elapsedAttack>=9000){clearInterval(dozerState.attackTimer);dozerState.attackTimer=null;gameOver("DOZER GOT YOU")}},250)}
 function resetSettings(){settings={...DEFAULTS};applySettingsToUI();saveSettings();newGame();toast("Settings reset")}
 function randomize(){const choices={mapSize:[15,20,25,30,35,40],foodCount:rand(12)+1,foodValue:rand(8)+1,startLength:clamp(rand(10)+2,2,20),speed:35+rand(30)*5,speedGrowth:rand(7)*2,wrap:Math.random()<.35,selfCollision:Math.random()<.85,grid:Math.random()<.5,ghostFood:Math.random()<.35,respawn:true,obstacles:rand(16),bonusChance:rand(61),goldMultiplier:2+rand(6),nearMiss:Math.random()<.5,perfectBonus:Math.random()<.5,theme:Object.keys(THEMES)[rand(4)],snakeStyle:["block","dot","outline","scan"][rand(4)],foodStyle:["block","dot","cross","diamond"][rand(4)]};settings={...settings,...choices};applySettingsToUI();saveSettings();newGame();toast("Random modifier set generated")}
-function startSnake(){const center=Math.floor(settings.mapSize/2);snake=[];for(let i=0;i<settings.startLength;i++)snake.push({x:center-i,y:center});direction={x:1,y:0};queued={x:1,y:0}}
+function startSnake(){const length=Math.min(settings.startLength,settings.mapSize);const center=Math.floor(settings.mapSize/2);const startX=Math.max(0,Math.floor((settings.mapSize-length)/2));settings.startLength=length;snake=[];for(let i=0;i<length;i++)snake.push({x:startX+i,y:center});direction={x:1,y:0};queued={x:1,y:0}}
 function cellAvailable(p){if(p.x<0||p.x>=settings.mapSize||p.y<0||p.y>=settings.mapSize)return false;if(snake.some(s=>same(s,p)))return false;if(obstacles.some(o=>same(o,p)))return false;if(foods.some(f=>same(f,p)))return false;return true}
 function randomOpenCell(){const total=settings.mapSize*settings.mapSize;for(let tries=0;tries<total*2;tries++){const p={x:rand(settings.mapSize),y:rand(settings.mapSize)};if(cellAvailable(p))return p}return null}
 function buildObstacles(){obstacles=[];const wanted=settings.obstacles;let attempts=0;while(obstacles.length<wanted&&attempts<wanted*30){attempts++;const p=randomOpenCell();if(!p)break;const center=Math.floor(settings.mapSize/2);if(Math.abs(p.x-center)<3&&Math.abs(p.y-center)<2)continue;obstacles.push(p)}}
@@ -162,12 +149,12 @@ function fillFood(){const target=Math.min(settings.foodCount,settings.mapSize*se
 
 function newGame(){
  clearDozerTimers();dozerState.phase="idle";$("dozerWarning")?.classList.remove("show");if(cursedState.active){clearTimeout(cursedState.rollTimer);clearTimeout(cursedState.wallTimer);cursedState.wallTimer=null;cursedState.wall=null;$("curseWall")?.classList.remove("show");cursedState.rollTimer=setTimeout(()=>{if(cursedState.active&&running)scheduleCurseRoll(0)},Math.max(0,cursedState.armedAt-performance.now()))}
- applyMode();clearVentState();powerups=[];powerState={shield:0,multiplier:1,killdozerUntil:0};
- stopTimer();readSettings();startSnake();buildObstacles();foods=[];if(settings.ventHunter&&stats.itsAYes)buildVents();nextXFormationId=1;fillFood();spawnBushCampingFood();score=0;elapsed=0;particles=[];flash=0;inputQueue=[];running=true;paused=false;gameStart=performance.now();stats.games++;featureSave();updateHUD();draw();startTimer();scheduleDozerWarning();
+ readSettings();applyMode();clearVentState();powerups=[];powerState={shield:0,multiplier:1,killdozerUntil:0,speedUntil:0};
+ stopTimer();startSnake();buildObstacles();foods=[];if(settings.ventHunter&&stats.itsAYes)buildVents();nextXFormationId=1;fillFood();spawnBushCampingFood();score=0;elapsed=0;particles=[];flash=0;inputQueue=[];running=true;paused=false;gameStart=performance.now();stats.games++;featureSave();updateHUD();draw();startTimer();scheduleDozerWarning();
 }
 function startTimer(){stopTimer();timer=setInterval(tick,getTickRate())}
 function stopTimer(){if(timer){clearInterval(timer);timer=null}}
-function getTickRate(){const growth=Math.pow(1-settings.speedGrowth/100,score);const base=Math.max(18,Math.round(settings.speed*growth));return powerState.killdozerUntil&&performance.now()<powerState.killdozerUntil?Math.max(4,Math.round(base/5)):base}
+function getTickRate(){const now=performance.now();const growth=Math.pow(1-settings.speedGrowth/100,score);let base=Math.max(18,Math.round(settings.speed*growth));if(powerState.speedUntil>now)base=Math.max(8,Math.round(base/2));if(powerState.killdozerUntil&&now<powerState.killdozerUntil)base=Math.max(4,Math.round(base/5));return base}
 function restartTimerIfNeeded(){if(running&&!paused)startTimer()}
 function queueDirection(x,y){if(!running)return;const base=inputQueue.length?inputQueue[inputQueue.length-1]:queued;if(x===-base.x&&y===-base.y)return;if(x===base.x&&y===base.y)return;if(inputQueue.length<3)inputQueue.push({x,y})}
 function consumeDirection(){if(inputQueue.length)queued=inputQueue.shift();direction=queued}
@@ -229,7 +216,7 @@ function tick(){
  elapsed=(performance.now()-gameStart)/1000;updateHUD();draw();
 }
 function nearMissCheck(head){const neighbors=[{x:head.x+1,y:head.y},{x:head.x-1,y:head.y},{x:head.x,y:head.y+1},{x:head.x,y:head.y-1}];const danger=neighbors.some(p=>snake.some((s,i)=>i>0&&same(p,s))||obstacles.some(o=>same(p,o)));if(danger&&Math.random()<.12){score+=1;toast("Near-miss +1")}}
-function gameOver(reason){clearDozerTimers();clearVentState();clearTimeout(cursedState.rollTimer);cursedState.rollTimer=null;dozerState.phase="idle";$("dozerWarning")?.classList.remove("show");stats.deaths++;stats.bestLength=Math.max(stats.bestLength,snake.length);stats.bestTime=Math.max(stats.bestTime,elapsed);featureSave();running=false;paused=false;stopTimer();if(score>best){best=score;localStorage.setItem("snake-best",String(best))}$("message").textContent=reason;$("finalScore").textContent=score;$("finalLength").textContent=snake.length;$("overlay").classList.add("show");updateHUD();draw()}
+function gameOver(reason){clearDozerTimers();clearVentState();clearTimeout(cursedState.rollTimer);clearTimeout(cursedState.wallTimer);cursedState.rollTimer=null;cursedState.wallTimer=null;cursedState.wall=null;$("curseWall")?.classList.remove("show");dozerState.phase="idle";$("dozerWarning")?.classList.remove("show");stats.deaths++;stats.bestLength=Math.max(stats.bestLength,snake.length);stats.bestTime=Math.max(stats.bestTime,elapsed);featureSave();running=false;paused=false;stopTimer();if(score>best){best=score;localStorage.setItem("snake-best",String(best))}$("message").textContent=reason;$("finalScore").textContent=score;$("finalLength").textContent=snake.length;$("overlay").classList.add("show");updateHUD();draw()}
 function togglePause(){if(!running)return;paused=!paused;if(paused){stopTimer();$("message").textContent="Paused";$("finalScore").textContent=score;$("finalLength").textContent=snake.length;$("overlay").classList.add("show")}else{$("overlay").classList.remove("show");gameStart=performance.now()-elapsed*1000;startTimer()}}
 function updateHUD(){$("score").textContent=score;$("length").textContent=snake.length;$("best").textContent=best;const total=Math.floor(elapsed);const m=Math.floor(total/60);const s=String(total%60).padStart(2,"0");$("time").textContent=m+":"+s}
 function clearBoard(){const t=THEMES[settings.theme];ctx.fillStyle=t.bg;ctx.fillRect(0,0,canvas.width,canvas.height)}
@@ -287,6 +274,7 @@ function safeLoad(){featureLoad();loadSettings();readSettings()}
 safeLoad();
 bindAll();
 setupSecretCode();
+setupMobileControls();
 newGame();
 animateParticles();
 })();
