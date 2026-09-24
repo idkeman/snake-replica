@@ -7,7 +7,7 @@ const DEFAULTS={
  mapSize:20,foodCount:1,foodValue:1,startLength:3,speed:100,speedGrowth:0,
  wrap:false,selfCollision:true,grid:false,ghostFood:false,respawn:true,obstacles:0,
  bonusChance:0,goldMultiplier:3,nearMiss:false,perfectBonus:false,theme:"mono",
- snakeStyle:"block",foodStyle:"block",graceDozer:true,ventHunter:false,curse:false,curse:false
+ snakeStyle:"block",foodStyle:"block",graceDozer:true,ventHunter:false,curse:false
 };
 const THEMES={
  mono:{bg:"#000",snake:"#fff",head:"#fff",food:"#fff",bonus:"#fff",grid:"#161616",obstacle:"#555"},
@@ -48,7 +48,7 @@ function savePreset(){const n=$("presetName").value.trim();if(!n)return;let p={}
 function openFeatureMenu(){$("featureMenu").classList.add("show");renderStats();renderAchievements();renderPresets()}
 function closeFeatureMenu(){$("featureMenu").classList.remove("show")}
 function isHardMode(){return feature.mode==="hard"}
-function applyHardModeUI(){const hard=isHardMode();$("powerupsEnabled").checked=hard?true:feature.powerups;$("powerupRate").value=hard?60:feature.powerupRate;$("powerupRateVal").textContent=(hard?60:feature.powerupRate)+"%";$("powerupsEnabled").disabled=hard;$("powerupRate").disabled=hard;$("ventHunter").disabled=hard||!stats.itsAYes;$("curseEnabled").disabled=hard}
+function applyHardModeUI(){const hard=isHardMode();if(hard){feature.powerups=true;feature.powerupRate=60;settings.ventHunter=true;settings.curse=true}$("powerupsEnabled").checked=hard?true:feature.powerups;$("powerupRate").value=hard?60:feature.powerupRate;$("powerupRateVal").textContent=(hard?60:feature.powerupRate)+"%";$("powerupsEnabled").disabled=hard;$("powerupRate").disabled=hard;$("ventHunter").checked=hard?true:!!settings.ventHunter;$("ventHunter").disabled=hard||!stats.itsAYes;$("curseEnabled").checked=hard?true:!!settings.curse;$("curseEnabled").disabled=hard}
 function enforceHardMode(){if(!isHardMode())return;feature.powerups=true;feature.powerupRate=60;settings.ventHunter=true;settings.curse=true;applyHardModeUI()}
 function applyMode(){if(feature.mode==="endless"){settings.wrap=true;settings.selfCollision=false}else if(feature.mode==="challenge"){settings.obstacles=Math.max(12,settings.obstacles);settings.foodCount=Math.min(3,settings.foodCount)}else if(feature.mode==="survival"){settings.speedGrowth=Math.max(3,settings.speedGrowth)}else if(feature.mode==="timed"){settings.speed=Math.min(90,settings.speed)}else if(feature.mode==="hard"){enforceHardMode()}}
 function featureTick(){if(powerState.killdozerUntil&&performance.now()>=powerState.killdozerUntil){powerState.killdozerUntil=0;toast("KILLDOZER OVER");restartTimerIfNeeded()}if(feature.powerups&&Math.random()*100<feature.powerupRate/4){const p=randomOpenCell();if(p)powerups.push({...p,type:["shield","multiplier","shrink","speed"][rand(4)],life:90})}powerups.forEach(p=>p.life--);powerups=powerups.filter(p=>p.life>0)}
