@@ -171,6 +171,8 @@ function eatAt(p){const eaten=foods.filter(f=>same(f,p));if(!eaten.length)return
 
 function spawnBushCampingFood(force=false){
  if(stats.bushCamping&&!force)return null;
+ // Bush camping is an extra secret food; never let it replace the normal food supply.
+ if(!foods.some(f=>!f.bushCamping))return null;
  const candidates=[];
  for(let x=0;x<settings.mapSize;x++){
   for(let y=0;y<settings.mapSize;y++){
