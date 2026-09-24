@@ -97,8 +97,27 @@ function ventCount(){return clamp(Math.round(settings.mapSize/2.5),8,20)}
 function buildVents(){ventState.vents=[];const wanted=ventCount();let attempts=0;while(ventState.vents.length<wanted&&attempts<wanted*50){attempts++;const p={x:rand(settings.mapSize),y:rand(settings.mapSize)};if(snake.some(s=>same(s,p))||obstacles.some(o=>same(o,p))||foods.some(f=>same(f,p))||ventState.vents.some(v=>same(v,p)))continue;ventState.vents.push(p)}}
 function manhattan(a,b){return Math.abs(a.x-b.x)+Math.abs(a.y-b.y)}
 function nearestVent(p){return ventState.vents.reduce((best,v)=>!best||manhattan(p,v)<manhattan(p,best)?v:best,null)}
-function predictedTarget(){const h=snake[0],lead=3;let p={x:h.x+direction.x*lead,y:h.y+direction.y*lead};if(settings.wrap){p.x=(p.x+settings.mapSize)%settings.mapSize;p.y=(p.y+settings.mapSize)%settings.mapSize}return p}
-function stepHunter(from,to){const candidates=[];if(to.x!==from.x)candidates.push({x:from.x+Math.sign(to.x-from.x),y:from.y});if(to.y!==from.y)candidates.push({x:from.x,y:from.y+Math.sign(to.y-from.y)});if(settings.wrap)candidates.push({x:(from.x+1)%settings.mapSize,y:from.y},{x:(from.x-1+settings.mapSize)%settings.mapSize,y:from.y},{x:from.x,y:(from.y+1)%settings.mapSize},{x:from.x,y:(from.y-1+settings.mapSize)%settings.mapSize});return candidates.map(p=>settings.wrap?{x:(p.x+settings.mapSize)%settings.mapSize,y:(p.y+settings.mapSize)%settings.mapSize}:p).find(p=>p.x>=0&&p.x<settings.mapSize&&p.y>=0&&p.y<settings.mapSize&&!obstacles.some(o=>same(o,p)))||from}
+function predictedTarget(){
+ const h=snake[0],lead=5;
+ let p={x:h.x+direction.x*lead,y:h.y+direction.y*lead};
+ if(settings.wrap){p.x=(p.x+settings.mapSize)%settings.mapSize;p.y=(p.y+settings.mapSize)%settings.mapSize}
+ return p
+}
+function hunterDistance(a,b){if(settings.wrap){const dx=Math.min(Math.abs(a.x-b.x),settings.mapSize-Math.abs(a.x-b.x));const dy=Math.min(Math.abs(a.y-b.y),settings.mapSize-Math.abs(a.y-b.y));return dx+dy}return manhattan(a,b)}
+function stepHunter(from,to){
+ const candidates=[];
+ const dirs=[{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+ for(const d of dirs){
+  let p={x:from.x+d.x,y:from.y+d.y};
+  if(settings.wrap){p.x=(p.x+settings.mapSize)%settings.mapSize;p.y=(p.y+settings.mapSize)%settings.mapSize}
+  if(p.x<0||p.x>=settings.mapSize||p.y<0||p.y>=settings.mapSize)continue;
+  if(obstacles.some(o=>same(o,p)))continue;
+  candidates.push(p)
+ }
+ if(!candidates.length)return from;
+ candidates.sort((a,b)=>hunterDistance(a,to)-hunterDistance(b,to));
+ return candidates[0]
+}
 function bfsPath(start,goal){const q=[start],came=new Map([[key(start),null]]),dirs=[{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];while(q.length){const p=q.shift();if(same(p,goal))break;for(const d of dirs){let n={x:p.x+d.x,y:p.y+d.y};if(settings.wrap){n.x=(n.x+settings.mapSize)%settings.mapSize;n.y=(n.y+settings.mapSize)%settings.mapSize}else if(n.x<0||n.x>=settings.mapSize||n.y<0||n.y>=settings.mapSize)continue;const k=key(n);if(came.has(k)||obstacles.some(o=>same(o,n)))continue;came.set(k,p);q.push(n)}}if(!came.has(key(goal)))return [];const path=[];let cur=goal;while(cur){path.unshift(cur);cur=came.get(key(cur))}return path.slice(1)}
 function spawnVentHunter(){if(!settings.ventHunter||!running||ventState.phase!=="hidden"||!ventState.vents.length)return;const vent=nearestVent(snake[0]);if(!vent)return;ventState.hunter={x:vent.x,y:vent.y};ventState.phase="chase";ventState.chaseEnds=performance.now()+5000;toast("SHE'S OUT")}
 function ventHunterTick(){if(!settings.ventHunter||!running)return;if(ventState.phase==="hidden"){if(!ventState.timer)ventState.timer=setTimeout(()=>{ventState.timer=null;spawnVentHunter()},3000);return}if(ventState.phase==="chase"){if(performance.now()>=ventState.chaseEnds){const target=nearestVent(ventState.hunter);ventState.returnPath=target?bfsPath(ventState.hunter,target):[];ventState.returnIndex=0;ventState.phase="return";return}ventState.hunter=stepHunter(ventState.hunter,predictedTarget());if(same(ventState.hunter,snake[0])){gameOver("SHE GOT YOU");return}}else if(ventState.phase==="return"){if(ventState.returnIndex<ventState.returnPath.length)ventState.hunter=ventState.returnPath[ventState.returnIndex++];else{ventState.hunter=null;ventState.phase="hidden";ventState.timer=setTimeout(()=>{ventState.timer=null;spawnVentHunter()},3000)}}}
