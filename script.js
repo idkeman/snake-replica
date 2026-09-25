@@ -195,7 +195,7 @@ function tick(){
  consumeDirection();featureTick();ventHunterTick();powerState.shield=Math.max(0,powerState.shield-1);powerState.multiplier=powerState.multiplier>1?Math.max(1,powerState.multiplier-.01):1;
  const head=nextHead();if(checkCurseCollision(head))return;collectPowerup(head);
  if((hitsWall(head)||hitsSelf(head)||hitsObstacle(head))&&powerState.shield<=0){gameOver("Game Over");return}
- const bubbleBass=foods.find(f=>f.bubbleBass&&same(f,head));if(bubbleBass){foods=foods.filter(f=>f!==bubbleBass);unlockAchievement("badassBubbleBass","Badass Bubble Bass");specialFoodFlash("https://static.wikia.nocookie.net/deathbattlefanon/images/9/97/BubbleBass.png/revision/latest?cb=20200505223250");return}
+ const bubbleBass=foods.find(f=>f.bubbleBass&&same(f,head));if(bubbleBass){foods=foods.filter(f=>f!==bubbleBass);unlockAchievement("badassBubbleBass","Badass Bubble Bass");specialFoodFlash("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTtKadRzLz9IM6RupPTUMwARWiXq7iOnswyTpGqXp-UkXTkCOE-590rnlP3TdMVIezM1ytteo3j0wS5EJL_M785KUUYgQtyJdyfbnBKuKG5&s=10");return}
  const differentGame=foods.find(f=>f.playDifferentGame&&same(f,head));
  if(differentGame){
   foods=foods.filter(f=>f!==differentGame);
